@@ -100,6 +100,14 @@ dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface)
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog h3{margin:0 0 14px}
 
+details.thread{padding:0;overflow:hidden}
+details.thread>summary{list-style:none;cursor:pointer;padding:14px 20px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+details.thread>summary::-webkit-details-marker{display:none}
+details.thread>summary .th-title{font-weight:700;font-size:17px;display:flex;gap:10px;align-items:baseline}
+details.thread>summary .th-title::before{content:"▸";color:var(--accent);transition:transform .15s;display:inline-block}
+details.thread[open]>summary .th-title::before{transform:rotate(90deg)}
+details.thread>summary:hover{background:var(--surface-2)}
+details.thread>.rich,details.thread>.actions{margin:0 20px 16px}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .jodit-container{color:#222}
 </style>
@@ -174,7 +182,7 @@ document.getElementById('foot').textContent = GUILD_NAME+' · 內容由管理員
 
 const TABS = [
   {id:'news',    name:'公告頁',          kind:'posts'},
-  {id:'rules',   name:'標裝限制',        kind:'page'},
+  {id:'rules',   name:'標裝限制',        kind:'thread'},
   {id:'roster',  name:'人員名單',        kind:'page'},
   {id:'enemies', name:'敵人警誡名單',    kind:'page'},
   {id:'items',   name:'各項補助商品報名', kind:'items'},
@@ -353,6 +361,7 @@ function renderMain(){
   if(tab.kind==='admins') adminsView(box);
   else if(tab.kind==='page') pageView(tab,box);
   else if(tab.kind==='posts') postsView(tab,box);
+  else if(tab.kind==='thread') threadView(tab,box);
   else itemsView(tab,box);
 }
 
@@ -441,7 +450,46 @@ function postsView(tab,box){
   };
   const edit=p=>itemEditor(box,{title:'公告標題',heading:p?'編輯公告':'新增公告',initial:p,withPin:true,
     onSave:d=>p?store.update('posts',p.id,d):store.add('posts',d),onCancel:draw});
-  unsub.push(store.watchColl('posts',d=>{posts=d;draw();}));
+  unsub.push(store.watchColl('posts',d=>{posts=d.filter(x=>!x.tab||x.tab==='news');draw();}));
+}
+
+/* ---- 討論串式頁面（標裝限制）：一則則標題＋細項，可新增、排序、展開 ---- */
+function threadView(tab,box){
+  let posts=[], intro=null, openSet=new Set(), allOpen=false;
+  const ordered=()=>[...posts].sort((a,b)=>(a.order??a.createdAt??0)-(b.order??b.createdAt??0));
+  const draw=()=>{
+    if(editing) return;
+    box.replaceChildren();
+    const head=h('div',{class:'head-row'},h('h2',{},tab.name));
+    const btns=h('div',{class:'actions',style:'margin:0'});
+    if(posts.length) btns.append(h('button',{class:'btn',onclick:()=>{allOpen=!allOpen;openSet=allOpen?new Set(posts.map(p=>p.id)):new Set();draw();}},allOpen?'全部收合':'全部展開'));
+    if(isAdmin()) btns.append(h('button',{class:'btn primary',onclick:()=>edit(null)},'＋ 新增項目'));
+    head.append(btns); box.append(head);
+    if(intro?.html) box.append(h('div',{class:'card'},richBox(intro.html,intro.bg)));
+    if(!posts.length){box.append(h('div',{class:'card empty'},'目前還沒有項目。'));return;}
+    const list=ordered();
+    list.forEach((p,i)=>{
+      const det=h('details',{class:'card thread',open:openSet.has(p.id)});
+      det.addEventListener('toggle',()=>{det.open?openSet.add(p.id):openSet.delete(p.id);});
+      det.append(h('summary',{},h('span',{class:'th-title'},p.title),h('span',{class:'meta'},fmt(p.updatedAt||p.createdAt)+byLine(p.updatedBy))));
+      det.append(richBox(p.html,p.bg));
+      if(isAdmin()) det.append(h('div',{class:'actions'},
+        h('button',{class:'btn sm',onclick:()=>edit(p)},'編輯'),
+        h('button',{class:'btn sm',disabled:i===0,onclick:()=>move(list,i,-1)},'上移'),
+        h('button',{class:'btn sm',disabled:i===list.length-1,onclick:()=>move(list,i,1)},'下移'),
+        h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`刪除「${p.title}」？`))await store.remove('posts',p.id);}},'刪除')));
+      box.append(det);
+    });
+  };
+  const move=async(list,i,d)=>{
+    const a=list[i], b=list[i+d]; if(!b) return;
+    const oa=a.order??a.createdAt??0, ob=b.order??b.createdAt??0;
+    await store.update('posts',a.id,{order:ob===oa?oa+d:ob}); await store.update('posts',b.id,{order:oa});
+  };
+  const edit=p=>itemEditor(box,{title:'項目標題（例如：武器、防具、等級限制）',heading:p?'編輯項目':'新增項目',initial:p,
+    onSave:d=>p?store.update('posts',p.id,d):store.add('posts',{...d,tab:tab.id,order:Date.now()}),onCancel:()=>{if(p)openSet.add(p.id);draw();}});
+  unsub.push(store.watchColl('posts',d=>{posts=d.filter(x=>x.tab===tab.id);draw();}));
+  unsub.push(store.watchPage(tab.id,d=>{intro=d;draw();}));
 }
 
 /* ---- 各項補助商品報名 ---- */
