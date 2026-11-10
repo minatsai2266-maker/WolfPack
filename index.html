@@ -221,6 +221,7 @@ async function makeFirebaseStore(cfg){
     async probeOwner(e){try{await db.doc('admins/'+e).set({owner:true,addedAt:Date.now()},{merge:true});return true;}catch{return false;}},
     addAdmin(e,by,nick){return db.doc('admins/'+e).set({addedBy:by,addedAt:Date.now(),nickname:nick||''});},
     setNick(e,n){return db.doc('admins/'+e).set({nickname:n},{merge:true});},
+    async renameAuthor(o,n){ for(const c of ['posts','items','pages']){ const q=await db.collection(c).where('updatedBy','==',o).get(); for(const d of q.docs) await d.ref.update({updatedBy:n}); } },
     removeAdmin(e){return db.doc('admins/'+e).delete();},
     logout(){return auth.signOut();},
     watchPage(id,cb){return db.doc('pages/'+id).onSnapshot(s=>cb(s.exists?s.data():null),e=>cb(null,e));},
@@ -253,6 +254,7 @@ function makeDemoStore(){
     watchAdmins(cb){state.nicks=state.nicks||{};return sub(()=>cb([...Object.keys(state.admins).map(id=>({id,owner:false,nickname:state.nicks[id]||''})),...(state.owner?[{id:state.owner,owner:true,nickname:state.nicks[state.owner]||''}]:[])]));},
     async addAdmin(e,by,nick){state.admins[e]={addedBy:by,addedAt:Date.now()};state.nicks=state.nicks||{};state.nicks[e]=nick||'';save();},
     async setNick(e,n){state.nicks=state.nicks||{};state.nicks[e]=n;save();},
+    async renameAuthor(o,n){for(const c of ['posts','items','pages'])for(const v of Object.values(state[c]))if(v.updatedBy===o)v.updatedBy=n;save();},
     async removeAdmin(e){delete state.admins[e];save();},
     async logout(){ user=null; try{sessionStorage.removeItem(KEY+'-u');}catch{} authSubs.forEach(f=>f(null)); },
     watchPage(id,cb){return sub(()=>cb(state.pages[id]||null));},
@@ -618,7 +620,7 @@ function adminsView(box){
     const tb=h('tbody');
     const nickCell=a=>{
       const inp=h('input',{type:'text',value:nicks[a]||'',placeholder:'未設定',maxlength:20,style:'width:100%;min-width:90px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px','aria-label':'暱稱'});
-      const b=h('button',{class:'btn sm',onclick:async()=>{b.disabled=true;try{await store.setNick(a,inp.value.trim());b.textContent='已儲存';}catch(err){b.textContent='失敗';}setTimeout(()=>{b.disabled=false;b.textContent='儲存';},1500);}},'儲存');
+      const b=h('button',{class:'btn sm',onclick:async()=>{b.disabled=true;const old=nicks[a]||'', nw=inp.value.trim();try{await store.setNick(a,nw);if(old&&nw&&old!==nw)await store.renameAuthor(old,nw);b.textContent='已儲存';}catch(err){b.textContent='失敗';}setTimeout(()=>{b.disabled=false;b.textContent='儲存';},1500);}},'儲存');
       return h('td',{},h('div',{style:'display:flex;gap:6px'},inp,b));
     };
     tb.append(h('tr',{},h('td',{},ownerEmail()),nickCell(ownerEmail()),h('td',{},'最高管理員'),h('td',{})));
