@@ -54,7 +54,7 @@ main{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
 .head-row h2{margin:0;font-size:22px}
 .meta{font-size:13px;color:var(--muted)}
 
-.btn{border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1.3}
+.btn{white-space:nowrap;border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1.3}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .btn.danger{color:var(--danger)}
@@ -116,7 +116,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
   <nav class="tabs" id="tabs" role="tablist"></nav>
 </header>
 <main id="main"></main>
-<footer>公會佈達站 · 內容由管理員維護</footer>
+<footer id="foot">內容由管理員維護</footer>
 
 <dialog id="askDlg">
   <p id="askMsg" style="margin:0 0 16px"></p>
@@ -170,6 +170,7 @@ const FIREBASE_CONFIG = {
 "use strict";
 document.getElementById('siteTitle').textContent = GUILD_NAME;
 document.title = GUILD_NAME;
+document.getElementById('foot').textContent = GUILD_NAME+' · 內容由管理員維護';
 
 const TABS = [
   {id:'news',    name:'公告頁',          kind:'posts'},
@@ -200,10 +201,11 @@ async function makeFirebaseStore(cfg){
     resendVerify(){return auth.currentUser&&auth.currentUser.sendEmailVerification();},
     async reloadUser(){await auth.currentUser.reload();await auth.currentUser.getIdToken(true);const u=auth.currentUser;return{email:(u.email||'').toLowerCase(),verified:u.emailVerified};},
     resetPw(e){return auth.sendPasswordResetEmail(e);},
-    watchAdmins(cb){return db.collection('admins').onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,owner:!!d.data().owner}))),()=>cb([]));},
+    watchAdmins(cb){return db.collection('admins').onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,owner:!!d.data().owner,nickname:d.data().nickname||''}))),()=>cb([]));},
     // 只有最高管理員能寫 admins（由資料庫規則決定），寫得進去就代表是最高管理員
     async probeOwner(e){try{await db.doc('admins/'+e).set({owner:true,addedAt:Date.now()},{merge:true});return true;}catch{return false;}},
-    addAdmin(e,by){return db.doc('admins/'+e).set({addedBy:by,addedAt:Date.now()});},
+    addAdmin(e,by,nick){return db.doc('admins/'+e).set({addedBy:by,addedAt:Date.now(),nickname:nick||''});},
+    setNick(e,n){return db.doc('admins/'+e).set({nickname:n},{merge:true});},
     removeAdmin(e){return db.doc('admins/'+e).delete();},
     logout(){return auth.signOut();},
     watchPage(id,cb){return db.doc('pages/'+id).onSnapshot(s=>cb(s.exists?s.data():null),e=>cb(null,e));},
@@ -233,8 +235,9 @@ function makeDemoStore(){
     async googleLogin(){ return this.login('google@demo','demo'); },
     async resendVerify(){}, async reloadUser(){return user;}, async resetPw(){},
     async probeOwner(e){return state.owner===e;},
-    watchAdmins(cb){return sub(()=>cb([...Object.keys(state.admins).map(id=>({id,owner:false})),...(state.owner?[{id:state.owner,owner:true}]:[])]));},
-    async addAdmin(e,by){state.admins[e]={addedBy:by,addedAt:Date.now()};save();},
+    watchAdmins(cb){state.nicks=state.nicks||{};return sub(()=>cb([...Object.keys(state.admins).map(id=>({id,owner:false,nickname:state.nicks[id]||''})),...(state.owner?[{id:state.owner,owner:true,nickname:state.nicks[state.owner]||''}]:[])]));},
+    async addAdmin(e,by,nick){state.admins[e]={addedBy:by,addedAt:Date.now()};state.nicks=state.nicks||{};state.nicks[e]=nick||'';save();},
+    async setNick(e,n){state.nicks=state.nicks||{};state.nicks[e]=n;save();},
     async removeAdmin(e){delete state.admins[e];save();},
     async logout(){ user=null; try{sessionStorage.removeItem(KEY+'-u');}catch{} authSubs.forEach(f=>f(null)); },
     watchPage(id,cb){return sub(()=>cb(state.pages[id]||null));},
@@ -304,7 +307,9 @@ function makeEditor(host,html){
 
 /* ---------------- 狀態與畫面 ---------------- */
 let me=null, current=null, unsub=[], editing=null, admins=[];
-let ownerId='';
+let ownerId='', nicks={};
+const myName=()=>(me&&nicks[me.email])||'管理員';
+const byLine=v=>v&&!String(v).includes('@')?' · '+v:'';
 const ownerEmail=()=>ownerId;
 try{ current=localStorage.getItem('guild-tab'); }catch{}
 if(!TABS.some(t=>t.id===current)&&current!=='admins') current=TABS[0].id;
@@ -314,7 +319,7 @@ const visibleTabs=()=>isOwner()?[...TABS,{id:'admins',name:'⚙ 管理員設定'
 
 function renderWho(){
   const w=$('#who'); w.replaceChildren();
-  if(me){ w.append(h('span',{},(isOwner()?'最高管理員：':isAdmin()?'管理員：':'')+me.email), h('button',{class:'btn sm',onclick:()=>store.logout()},'登出')); }
+  if(me){ w.append(h('span',{},(isOwner()?'最高管理員：':isAdmin()?'管理員：':'')+(nicks[me.email]||me.email)), h('button',{class:'btn sm',onclick:()=>store.logout()},'登出')); }
   else  { w.append(h('button',{class:'btn sm',onclick:()=>openLogin('login')},'管理員登入')); }
 }
 function renderTabs(){
@@ -357,7 +362,7 @@ function pageView(tab,box){
   const draw=()=>{
     if(editing) return;
     box.replaceChildren();
-    const head=h('div',{class:'head-row'},h('div',{},h('h2',{},tab.name),data?.updatedAt?h('div',{class:'meta'},`最後更新 ${fmt(data.updatedAt)}${data.updatedBy?' · '+data.updatedBy:''}`):null));
+    const head=h('div',{class:'head-row'},h('div',{},h('h2',{},tab.name),data?.updatedAt?h('div',{class:'meta'},`最後更新 ${fmt(data.updatedAt)}${byLine(data.updatedBy)}`):null));
     if(isAdmin()) head.append(h('button',{class:'btn primary',onclick:()=>edit()},'編輯這頁'));
     box.append(head);
     box.append(data?.html ? h('div',{class:'card'},richBox(data.html,data.bg)) : h('div',{class:'card empty'},'目前還沒有內容。'));
@@ -370,7 +375,7 @@ function pageView(tab,box){
       const html=editing.value;
       if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
       save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
-      try{ await store.savePage(tab.id,{html,bg:bg.value,updatedBy:me.email}); editing.destruct(); editing=null; draw(); }
+      try{ await store.savePage(tab.id,{html,bg:bg.value,updatedBy:myName()}); editing.destruct(); editing=null; draw(); }
       catch(e){ save.disabled=false; msg.className='msg err'; msg.textContent='儲存失敗：'+(e.message||e); }
     }},'儲存');
     box.append(h('div',{class:'head-row'},h('h2',{},'編輯：'+tab.name)),
@@ -396,7 +401,7 @@ function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCan
     const html=editing.value, t=tIn.value.trim();
     if(!t){msg.className='msg err';msg.textContent='請填標題';return;}
     if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
-    const data={title:t,html,bg:bg.value,updatedBy:me.email,updatedAt:Date.now()};
+    const data={title:t,html,bg:bg.value,updatedBy:myName(),updatedAt:Date.now()};
     if(pin) data.pinned=pin.checked;
     if(dl){data.deadline=dl.value;data.open=open.checked;}
     save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
@@ -426,7 +431,7 @@ function postsView(tab,box){
     [...posts].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt||0)-(a.createdAt||0)).forEach(p=>{
       const c=h('div',{class:'card'},
         h('h3',{},p.pinned?h('span',{class:'pin'},'置頂'):null,p.title),
-        h('div',{class:'meta'},fmt(p.createdAt)+(p.updatedBy?' · '+p.updatedBy:'')),
+        h('div',{class:'meta'},fmt(p.createdAt)+byLine(p.updatedBy)),
         richBox(p.html,p.bg));
       if(isAdmin()) c.append(h('div',{class:'actions'},
         h('button',{class:'btn sm',onclick:()=>edit(p)},'編輯'),
@@ -508,20 +513,26 @@ function adminsView(box){
   const draw=()=>{
     box.replaceChildren();
     const em=h('input',{type:'email',placeholder:'新管理員的 Email',required:true,'aria-label':'Email'});
+    const nk=h('input',{type:'text',placeholder:'顯示暱稱（例如遊戲角色名）',maxlength:20,'aria-label':'暱稱'});
     const msg=h('div',{class:'msg'});
-    const f=h('form',{class:'signup-form',style:'grid-template-columns:1fr auto',onsubmit:async e=>{
+    const f=h('form',{class:'signup-form',onsubmit:async e=>{
       e.preventDefault(); const v=em.value.trim().toLowerCase();
       if(v===ownerEmail()||admins.includes(v)){msg.className='msg err';msg.textContent='這個 Email 已經是管理員了';return;}
-      try{await store.addAdmin(v,me.email);msg.className='msg ok';msg.textContent=`已新增 ${v}。請對方打開網站 → 管理員登入 → 「第一次使用？設定密碼」。`;}
+      try{await store.addAdmin(v,myName(),nk.value.trim());msg.className='msg ok';msg.textContent=`已新增 ${v}。請對方打開網站 → 管理員登入 → 「第一次使用？設定密碼」。`;}
       catch(err){msg.className='msg err';msg.textContent='新增失敗：'+(err.message||err);}
-    }},em,h('button',{class:'btn primary',type:'submit'},'新增管理員'));
+    }},em,nk,h('button',{class:'btn primary',type:'submit'},'新增管理員'));
     const tb=h('tbody');
-    tb.append(h('tr',{},h('td',{},ownerEmail()),h('td',{},'最高管理員'),h('td',{})));
-    admins.filter(a=>a!==ownerEmail()).sort().forEach(a=>tb.append(h('tr',{},h('td',{},a),h('td',{},'管理員'),
+    const nickCell=a=>{
+      const inp=h('input',{type:'text',value:nicks[a]||'',placeholder:'未設定',maxlength:20,style:'width:100%;min-width:90px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px','aria-label':'暱稱'});
+      const b=h('button',{class:'btn sm',onclick:async()=>{b.disabled=true;try{await store.setNick(a,inp.value.trim());b.textContent='已儲存';}catch(err){b.textContent='失敗';}setTimeout(()=>{b.disabled=false;b.textContent='儲存';},1500);}},'儲存');
+      return h('td',{},h('div',{style:'display:flex;gap:6px'},inp,b));
+    };
+    tb.append(h('tr',{},h('td',{},ownerEmail()),nickCell(ownerEmail()),h('td',{},'最高管理員'),h('td',{})));
+    admins.filter(a=>a!==ownerEmail()).sort().forEach(a=>tb.append(h('tr',{},h('td',{},a),nickCell(a),h('td',{},'管理員'),
       h('td',{},h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${a} 的管理員權限？`))await store.removeAdmin(a);}},'移除')))));
     box.append(h('div',{class:'head-row'},h('h2',{},'管理員設定')),
-      h('div',{class:'card'},h('p',{class:'meta',style:'margin:0'},'被新增的人用同一個 Email 在網站「管理員登入 → 第一次使用？設定密碼」自己設定密碼，收到驗證信點連結後就能編輯。移除後對方立刻失去編輯權限。'),f,msg,
-        h('table',{class:'sl',style:'margin-top:14px'},h('thead',{},h('tr',{},h('th',{},'Email'),h('th',{},'身分'),h('th',{}))),tb)));
+      h('div',{class:'card'},h('p',{class:'meta',style:'margin:0'},'被新增的人用同一個 Email 在網站「管理員登入 → 第一次使用？設定密碼」自己設定密碼，收到驗證信點連結後就能編輯（或直接用 Google 帳號登入）。移除後對方立刻失去編輯權限。公告和頁面上只會顯示暱稱，不會顯示 Email。'),f,msg,
+        h('div',{style:'overflow-x:auto;margin-top:14px'},h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'Email'),h('th',{},'顯示暱稱'),h('th',{},'身分'),h('th',{}))),tb))));
   };
   draw();
   const off=store.watchAdmins(()=>draw()); unsub.push(off);
@@ -578,7 +589,7 @@ function watchAdmins(){
   if(adminsOff){try{adminsOff()}catch{} adminsOff=null;} admins=[];
   if(!me||!me.verified) return;
   store.probeOwner(me.email);
-  adminsOff=store.watchAdmins(list=>{ admins=list.map(x=>x.id.toLowerCase()); ownerId=(list.find(x=>x.owner)?.id||'').toLowerCase(); const k=String(isAdmin())+isOwner(); if(k!==adminsKey){adminsKey=k; renderWho(); renderTabs(); if(!editing) renderMain();} });
+  adminsOff=store.watchAdmins(list=>{ admins=list.map(x=>x.id.toLowerCase()); nicks=Object.fromEntries(list.map(x=>[x.id.toLowerCase(),x.nickname||''])); ownerId=(list.find(x=>x.owner)?.id||'').toLowerCase(); renderWho(); const k=String(isAdmin())+isOwner(); if(k!==adminsKey){adminsKey=k; renderTabs(); if(!editing) renderMain();} });
 }
 store.onAuth(u=>{ const changed=JSON.stringify(u)!==JSON.stringify(me); me=u; watchAdmins(); adminsKey=String(isAdmin())+isOwner(); renderTabs(); renderWho(); if(changed||!$('#main').childElementCount){ if(editing){try{editing.destruct()}catch{} editing=null;} renderMain(); } });
 renderTabs();
