@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公會佈達站</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@4.17.1/es2021/jodit.fat.min.css">
+<style>
+/* =========================================================
+   設定區：公會名稱改這裡
+   ========================================================= */
+:root{
+  --bg:#f4efe4; --surface:#fffdf8; --surface-2:#efe7d6; --text:#2a2418; --muted:#6d6250;
+  --line:#ddd2bc; --accent:#9a6b12; --accent-ink:#fff; --danger:#b3261e; --ok:#2e7d32;
+  --header:#1d2333; --header-ink:#f3e6c4; --tab:#c9b48a;
+  --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13161f; --surface:#1c2030; --surface-2:#262b3d; --text:#ece6d6; --muted:#a59d8a;
+    --line:#333a50; --accent:#d7a640; --accent-ink:#1a1408; --danger:#ef7b73; --ok:#7bc47f;
+    --header:#0d1018; --header-ink:#f3e6c4; --tab:#8c8068;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13161f; --surface:#1c2030; --surface-2:#262b3d; --text:#ece6d6; --muted:#a59d8a;
+  --line:#333a50; --accent:#d7a640; --accent-ink:#1a1408; --danger:#ef7b73; --ok:#7bc47f;
+  --header:#0d1018; --header-ink:#f3e6c4; --tab:#8c8068;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;overflow-x:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+
+header.site{background:var(--header);color:var(--header-ink)}
+.bar{max-width:1080px;margin:0 auto;padding:14px 16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.crest{width:34px;height:34px;flex:none}
+.brand h1{margin:0;font-size:20px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tab)}
+.who .btn{border-color:#ffffff33;color:var(--header-ink);background:transparent}
+nav.tabs{max-width:1080px;margin:0 auto;padding:10px 16px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:none;border:0;background:transparent;color:var(--tab);padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;font-size:15px;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--bg);color:var(--text);font-weight:700}
+nav.tabs button:hover:not([aria-selected="true"]){color:var(--header-ink)}
+
+main{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+.demo-note{background:var(--surface-2);border:1px dashed var(--line);border-radius:var(--radius);padding:10px 14px;font-size:14px;color:var(--muted);margin-bottom:16px}
+.head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.head-row h2{margin:0;font-size:22px}
+.meta{font-size:13px;color:var(--muted)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1.3}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:16px}
+.card h3{margin:0 0 4px;font-size:18px}
+.pin{display:inline-block;background:var(--accent);color:var(--accent-ink);font-size:12px;padding:1px 8px;border-radius:99px;margin-right:6px;vertical-align:2px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:2px}
+.tag.open{border-color:var(--ok);color:var(--ok)}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.empty{color:var(--muted);text-align:center;padding:40px 10px}
+
+/* 管理員編的內容：放在固定淺色紙面上，讓管理員選的顏色在深色模式也看得清楚 */
+.rich{background:#fffdf8;color:#222;border-radius:8px;padding:16px 18px;overflow-x:auto;word-wrap:break-word}
+.rich img{max-width:100%;height:auto}
+.rich table{border-collapse:collapse;max-width:100%}
+.rich td,.rich th{border:1px solid #bbb;padding:6px 10px;vertical-align:top}
+.rich p{margin:.4em 0}
+.card .rich{margin-top:10px}
+
+.editor-wrap{margin-top:10px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label{font-size:14px;color:var(--muted)}
+.field input[type=text],.field input[type=email],.field input[type=password],.field input[type=date],.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
+.inline{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:14px}
+.inline label{display:flex;align-items:center;gap:6px}
+
+/* 報名 */
+.signup-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:12px;align-items:end}
+.signup-form input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
+@media (max-width:640px){.signup-form{grid-template-columns:1fr}}
+.list{margin-top:12px;border-top:1px solid var(--line)}
+.list-head{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14px;color:var(--muted)}
+table.sl{width:100%;border-collapse:collapse;font-size:14px}
+table.sl th,table.sl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.sl th{color:var(--muted);font-weight:500}
+.msg{font-size:14px;margin-top:6px}
+.msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:22px;width:min(380px,calc(100vw - 32px));box-shadow:0 10px 40px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 14px}
+
+footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
+.jodit-container{color:#222}
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <div class="brand">
+      <svg class="crest" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 6v9c0 7.5 5.1 13 12 15 6.9-2 12-7.5 12-15V6L16 2z" fill="#d7a640"/><path d="M16 7l2.4 5 5.4.6-4 3.7 1.1 5.4L16 19l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" fill="#1d2333"/></svg>
+      <h1 id="siteTitle">公會佈達站</h1>
+    </div>
+    <div class="who" id="who"></div>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+</header>
+<main id="main"></main>
+<footer>公會佈達站 · 內容由管理員維護</footer>
+
+<dialog id="askDlg">
+  <p id="askMsg" style="margin:0 0 16px"></p>
+  <div class="actions"><button class="btn primary" id="askOk" type="button">確定</button><button class="btn" id="askNo" type="button">取消</button></div>
+</dialog>
+<dialog id="loginDlg">
+  <h3 id="lgTitle">管理員登入</h3>
+  <form id="loginForm">
+    <div class="field"><label for="lgEmail">Email</label><input id="lgEmail" type="email" required autocomplete="username"></div>
+    <div class="field"><label for="lgPw">密碼</label><input id="lgPw" type="password" required autocomplete="current-password"></div>
+    <div class="msg" id="lgErr"></div>
+    <div class="actions"><button class="btn primary" type="submit" id="lgSubmit">登入</button><button class="btn" type="button" id="lgCancel">取消</button></div>
+    <div class="meta" style="margin-top:12px">
+      <a href="#" id="lgToReg">第一次使用？設定密碼</a> · <a href="#" id="lgForgot">忘記密碼</a>
+    </div>
+  </form>
+</dialog>
+
+<!-- =========================================================
+     設定區
+     1. GUILD_NAME：網站標題
+     2. FIREBASE_CONFIG：貼上 Firebase 專案設定。留 null 就是「預覽模式」，
+        資料只存在目前這台電腦的瀏覽器，登入密碼輸入 demo 即可。
+     最高管理員的 Email 只寫在 Firebase 的資料庫規則裡（不會出現在網頁原始碼）。
+     ========================================================= -->
+<script>
+const GUILD_NAME = "Wolf Pack";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAR1myFU8lPz3mdY4Bj9WH9pLy27Lpavuo",
+  authDomain: "lineagew-be2a7.firebaseapp.com",
+  projectId: "lineagew-be2a7",
+  storageBucket: "lineagew-be2a7.firebasestorage.app",
+  messagingSenderId: "703152091139",
+  appId: "1:703152091139:web:383817afed33e059501e36"
+};
+/* 例：
+const FIREBASE_CONFIG = {
+  apiKey: "...", authDomain: "xxx.firebaseapp.com", projectId: "xxx",
+  storageBucket: "xxx.appspot.com", messagingSenderId: "...", appId: "..."
+};
+*/
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jodit@4.17.1/es2021/jodit.fat.min.js"></script>
+<script>
+(async function(){
+"use strict";
+document.getElementById('siteTitle').textContent = GUILD_NAME;
+document.title = GUILD_NAME;
+
+const TABS = [
+  {id:'news',    name:'公告頁',          kind:'posts'},
+  {id:'rules',   name:'標裝限制',        kind:'page'},
+  {id:'roster',  name:'人員名單',        kind:'page'},
+  {id:'enemies', name:'敵人警誡名單',    kind:'page'},
+  {id:'items',   name:'各項補助商品報名', kind:'items'},
+];
+const MAX_DOC = 900*1024; // Firestore 單筆上限約 1MB
+
+/* ---------------- 資料層 ---------------- */
+function loadScript(src){return new Promise((ok,err)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=err;document.head.appendChild(s);});}
+
+async function makeFirebaseStore(cfg){
+  const v='12.19.0', base=`https://cdn.jsdelivr.net/npm/firebase@${v}/`;
+  await loadScript(base+'firebase-app-compat.js');
+  await Promise.all([loadScript(base+'firebase-auth-compat.js'),loadScript(base+'firebase-firestore-compat.js')]);
+  firebase.initializeApp(cfg);
+  const db=firebase.firestore(), auth=firebase.auth();
+  const snapList = q => q.onSnapshot.bind(q);
+  const docs = s => s.docs.map(d=>({id:d.id,...d.data()}));
+  return {
+    demo:false,
+    onAuth(cb){auth.onAuthStateChanged(u=>cb(u?{email:(u.email||'').toLowerCase(),verified:u.emailVerified}:null));},
+    login(e,p){return auth.signInWithEmailAndPassword(e,p);},
+    async register(e,p){const c=await auth.createUserWithEmailAndPassword(e,p);await c.user.sendEmailVerification();},
+    resendVerify(){return auth.currentUser&&auth.currentUser.sendEmailVerification();},
+    async reloadUser(){await auth.currentUser.reload();await auth.currentUser.getIdToken(true);const u=auth.currentUser;return{email:(u.email||'').toLowerCase(),verified:u.emailVerified};},
+    resetPw(e){return auth.sendPasswordResetEmail(e);},
+    watchAdmins(cb){return db.collection('admins').onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,owner:!!d.data().owner}))),()=>cb([]));},
+    // 只有最高管理員能寫 admins（由資料庫規則決定），寫得進去就代表是最高管理員
+    async probeOwner(e){try{await db.doc('admins/'+e).set({owner:true,addedAt:Date.now()},{merge:true});return true;}catch{return false;}},
+    addAdmin(e,by){return db.doc('admins/'+e).set({addedBy:by,addedAt:Date.now()});},
+    removeAdmin(e){return db.doc('admins/'+e).delete();},
+    logout(){return auth.signOut();},
+    watchPage(id,cb){return db.doc('pages/'+id).onSnapshot(s=>cb(s.exists?s.data():null),e=>cb(null,e));},
+    savePage(id,data){return db.doc('pages/'+id).set({...data,updatedAt:Date.now()});},
+    watchColl(name,cb){return db.collection(name).onSnapshot(s=>cb(docs(s)),e=>cb([],e));},
+    add(name,data){return db.collection(name).add({...data,createdAt:Date.now()});},
+    update(name,id,data){return db.collection(name).doc(id).update(data);},
+    remove(name,id){return db.collection(name).doc(id).delete();},
+  };
+}
+
+function makeDemoStore(){
+  const KEY='guild-demo-v1';
+  let state; try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch{state={};}
+  state.pages=state.pages||{}; state.admins=state.admins||{}; state.posts=state.posts||{}; state.items=state.items||{}; state.signups=state.signups||{};
+  let user=null; try{user=JSON.parse(sessionStorage.getItem(KEY+'-u'));}catch{}
+  const subs=new Set(), authSubs=new Set();
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){say('預覽模式的瀏覽器空間已滿（圖片太大）。');throw e;}subs.forEach(f=>f());};
+  const list=n=>Object.entries(state[n]).map(([id,v])=>({id,...v}));
+  const sub=f=>{subs.add(f);f();return()=>subs.delete(f);};
+  const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  return {
+    demo:true,
+    onAuth(cb){authSubs.add(cb);cb(user);},
+    async login(e,p){ if(p!=='demo') throw new Error('預覽模式密碼是 demo'); e=e.toLowerCase(); if(!state.owner){state.owner=e;save();} user={email:e,verified:true}; try{sessionStorage.setItem(KEY+'-u',JSON.stringify(user));}catch{} authSubs.forEach(f=>f(user)); },
+    async register(e,p){ return this.login(e,'demo'); },
+    async resendVerify(){}, async reloadUser(){return user;}, async resetPw(){},
+    async probeOwner(e){return state.owner===e;},
+    watchAdmins(cb){return sub(()=>cb([...Object.keys(state.admins).map(id=>({id,owner:false})),...(state.owner?[{id:state.owner,owner:true}]:[])]));},
+    async addAdmin(e,by){state.admins[e]={addedBy:by,addedAt:Date.now()};save();},
+    async removeAdmin(e){delete state.admins[e];save();},
+    async logout(){ user=null; try{sessionStorage.removeItem(KEY+'-u');}catch{} authSubs.forEach(f=>f(null)); },
+    watchPage(id,cb){return sub(()=>cb(state.pages[id]||null));},
+    async savePage(id,data){state.pages[id]={...data,updatedAt:Date.now()};save();},
+    watchColl(n,cb){return sub(()=>cb(list(n)));},
+    async add(n,data){state[n][uid()]={...data,createdAt:Date.now()};save();},
+    async update(n,id,data){state[n][id]={...state[n][id],...data};save();},
+    async remove(n,id){delete state[n][id];save();},
+  };
+}
+
+let store;
+try{ store = FIREBASE_CONFIG ? await makeFirebaseStore(FIREBASE_CONFIG) : makeDemoStore(); }
+catch(e){ document.getElementById('main').innerHTML='<div class="card">無法連線到資料庫，請稍後重新整理。</div>'; console.error(e); return; }
+
+/* ---------------- 工具 ---------------- */
+const $=(s,r=document)=>r.querySelector(s);
+const h=(tag,attrs={},...kids)=>{const el=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==='class')el.className=v;else if(k.startsWith('on'))el.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)el.setAttribute(k,v===true?'':v);}for(const c of kids.flat()){if(c==null||c===false)continue;el.append(c.nodeType?c:document.createTextNode(c));}return el;};
+function ask(msg,{okOnly=false}={}){
+  return new Promise(res=>{
+    const d=$('#askDlg'); $('#askMsg').textContent=msg; $('#askNo').hidden=okOnly;
+    const done=v=>{d.close();$('#askOk').onclick=$('#askNo').onclick=d.oncancel=null;res(v);};
+    $('#askOk').onclick=()=>done(true); $('#askNo').onclick=()=>done(false); d.oncancel=e=>{e.preventDefault();done(false);};
+    d.showModal();
+  });
+}
+const say=msg=>ask(msg,{okOnly:true});
+const fmt=t=>{if(!t)return'';const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
+const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';if(bg)d.style.background=bg;return d;};
+const bytes=s=>new Blob([s||'']).size;
+
+/* 圖片上傳：自動縮到最寬 1200px、轉 JPEG，避免資料太大 */
+function compressImage(file){
+  return new Promise((ok,err)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const max=1200, s=Math.min(1,max/img.width);
+      const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      const isPng=file.type==='image/png'&&c.width*c.height<300*300;
+      ok(c.toDataURL(isPng?'image/png':'image/jpeg',0.8));
+    };
+    img.onerror=err; img.src=url;
+  });
+}
+
+function makeEditor(host,html){
+  const ed=Jodit.make(host,{
+    language:'zh_tw', height:460, minHeight:300, toolbarAdaptive:false, toolbarSticky:true,
+    askBeforePasteHTML:false, askBeforePasteFromWord:false, defaultActionOnPaste:'insert_clear_html',
+    buttons:['bold','italic','underline','strikethrough','|','font','fontsize','brush','paragraph','|',
+             'ul','ol','align','indent','outdent','|','table','uploadImg','image','link','hr','|',
+             'undo','redo','eraser','fullsize','source'],
+    controls:{ uploadImg:{ name:'uploadImg', icon:'upload', tooltip:'上傳圖片（自動壓縮）', text:'上傳圖片',
+      exec(editor){
+        const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+        inp.onchange=async()=>{ for(const f of inp.files){ try{ const src=await compressImage(f); editor.s.insertHTML(`<img src="${src}" style="max-width:100%">`);}catch{say('這張圖片無法讀取');} } };
+        inp.click();
+      }}},
+    uploader:{insertImageAsBase64URI:true},
+    style:{background:'#fffdf8',color:'#222'},
+  });
+  ed.value=html||'';
+  return ed;
+}
+
+/* ---------------- 狀態與畫面 ---------------- */
+let me=null, current=null, unsub=[], editing=null, admins=[];
+let ownerId='';
+const ownerEmail=()=>ownerId;
+try{ current=localStorage.getItem('guild-tab'); }catch{}
+if(!TABS.some(t=>t.id===current)&&current!=='admins') current=TABS[0].id;
+const isOwner=()=>!!me&&me.verified&&!!ownerEmail()&&me.email===ownerEmail();
+const isAdmin=()=>isOwner()||(!!me&&me.verified&&admins.includes(me.email));
+const visibleTabs=()=>isOwner()?[...TABS,{id:'admins',name:'⚙ 管理員設定',kind:'admins'}]:TABS;
+
+function renderWho(){
+  const w=$('#who'); w.replaceChildren();
+  if(me){ w.append(h('span',{},(isOwner()?'最高管理員：':isAdmin()?'管理員：':'')+me.email), h('button',{class:'btn sm',onclick:()=>store.logout()},'登出')); }
+  else  { w.append(h('button',{class:'btn sm',onclick:()=>openLogin('login')},'管理員登入')); }
+}
+function renderTabs(){
+  const n=$('#tabs'); n.replaceChildren();
+  visibleTabs().forEach(t=>n.append(h('button',{role:'tab','aria-selected':String(t.id===current),onclick:()=>go(t.id)},t.name)));
+  const sel=n.querySelector('[aria-selected="true"]'); if(sel) sel.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+async function go(id){
+  if(editing && !await ask('還沒儲存的編輯內容會不見，確定離開？')) return;
+  current=id; try{localStorage.setItem('guild-tab',id);}catch{}
+  renderTabs(); renderMain();
+}
+function clearSubs(){ unsub.forEach(f=>{try{f()}catch{}}); unsub=[]; if(editing){try{editing.destruct()}catch{} editing=null;} }
+
+function renderMain(){
+  clearSubs();
+  const m=$('#main'); m.replaceChildren();
+  if(store.demo) m.append(h('div',{class:'demo-note'},'目前是預覽模式：資料只存在這台電腦的瀏覽器，別人看不到。右上角「管理員登入」任意 Email、密碼輸入 demo 就能試編輯。'));
+  if(me&&!me.verified){
+    m.append(h('div',{class:'card'},h('h3',{},'請先驗證 Email'),
+      h('p',{},`驗證信已寄到 ${me.email}，請到信箱點連結（也看看垃圾郵件匣），點完再按下面的按鈕。`),
+      h('div',{class:'actions'},
+        h('button',{class:'btn primary',onclick:async()=>{me=await store.reloadUser();watchAdmins();renderWho();renderTabs();renderMain();}},'我已經驗證了'),
+        h('button',{class:'btn',onclick:async(e)=>{await store.resendVerify();e.target.textContent='已重寄';e.target.disabled=true;}},'重寄驗證信'))));
+  } else if(me&&!isAdmin()){
+    m.append(h('div',{class:'demo-note'},`${me.email} 還不是管理員，請最高管理員到「管理員設定」把妳／你加進去。`));
+  }
+  let tab=visibleTabs().find(t=>t.id===current);
+  if(!tab){current=TABS[0].id;tab=TABS[0];renderTabs();}
+  const box=h('div'); m.append(box);
+  if(tab.kind==='admins') adminsView(box);
+  else if(tab.kind==='page') pageView(tab,box);
+  else if(tab.kind==='posts') postsView(tab,box);
+  else itemsView(tab,box);
+}
+
+/* ---- 單頁內容（標裝限制 / 人員名單 / 敵人警誡名單） ---- */
+function pageView(tab,box){
+  let data=null;
+  const draw=()=>{
+    if(editing) return;
+    box.replaceChildren();
+    const head=h('div',{class:'head-row'},h('div',{},h('h2',{},tab.name),data?.updatedAt?h('div',{class:'meta'},`最後更新 ${fmt(data.updatedAt)}${data.updatedBy?' · '+data.updatedBy:''}`):null));
+    if(isAdmin()) head.append(h('button',{class:'btn primary',onclick:()=>edit()},'編輯這頁'));
+    box.append(head);
+    box.append(data?.html ? h('div',{class:'card'},richBox(data.html,data.bg)) : h('div',{class:'card empty'},'目前還沒有內容。'));
+  };
+  const edit=()=>{
+    box.replaceChildren();
+    const bg=h('input',{type:'color',value:data?.bg||'#fffdf8'});
+    const host=h('div'); const msg=h('div',{class:'msg'});
+    const save=h('button',{class:'btn primary',onclick:async()=>{
+      const html=editing.value;
+      if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
+      save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
+      try{ await store.savePage(tab.id,{html,bg:bg.value,updatedBy:me.email}); editing.destruct(); editing=null; draw(); }
+      catch(e){ save.disabled=false; msg.className='msg err'; msg.textContent='儲存失敗：'+(e.message||e); }
+    }},'儲存');
+    box.append(h('div',{class:'head-row'},h('h2',{},'編輯：'+tab.name)),
+      h('div',{class:'card'},
+        h('div',{class:'inline'},h('label',{},'頁面底色 ',bg),h('button',{class:'btn sm',onclick:()=>bg.value='#fffdf8'},'恢復預設')),
+        h('div',{class:'editor-wrap'},host),
+        h('div',{class:'actions'},save,h('button',{class:'btn',onclick:async()=>{if(await ask('放棄這次的修改？')){editing.destruct();editing=null;draw();}}},'取消')),msg));
+    editing=makeEditor(host,data?.html);
+  };
+  unsub.push(store.watchPage(tab.id,d=>{data=d;draw();}));
+}
+
+/* ---- 共用：文章／商品的編輯表單 ---- */
+function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCancel}){
+  box.replaceChildren();
+  const tIn=h('input',{type:'text',value:initial?.title||'',placeholder:'標題',required:true});
+  const pin=withPin?h('input',{type:'checkbox'}):null; if(pin) pin.checked=!!initial?.pinned;
+  const dl=withDeadline?h('input',{type:'date',value:initial?.deadline||''}):null;
+  const open=withDeadline?h('input',{type:'checkbox'}):null; if(open) open.checked=initial?initial.open!==false:true;
+  const bg=h('input',{type:'color',value:initial?.bg||'#fffdf8'});
+  const host=h('div'), msg=h('div',{class:'msg'});
+  const save=h('button',{class:'btn primary',onclick:async()=>{
+    const html=editing.value, t=tIn.value.trim();
+    if(!t){msg.className='msg err';msg.textContent='請填標題';return;}
+    if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
+    const data={title:t,html,bg:bg.value,updatedBy:me.email,updatedAt:Date.now()};
+    if(pin) data.pinned=pin.checked;
+    if(dl){data.deadline=dl.value;data.open=open.checked;}
+    save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
+    try{ await onSave(data); editing.destruct(); editing=null; onCancel(); }
+    catch(e){ save.disabled=false; msg.className='msg err'; msg.textContent='儲存失敗：'+(e.message||e); }
+  }},'儲存');
+  const opts=h('div',{class:'inline'});
+  if(pin) opts.append(h('label',{},pin,'置頂'));
+  if(dl) opts.append(h('label',{},'截止日 ',dl),h('label',{},open,'開放報名'));
+  opts.append(h('label',{},'內容底色 ',bg));
+  box.append(h('div',{class:'head-row'},h('h2',{},heading)),
+    h('div',{class:'card'},h('div',{class:'field'},h('label',{},title),tIn),opts,h('div',{class:'editor-wrap'},host),
+      h('div',{class:'actions'},save,h('button',{class:'btn',onclick:async()=>{if(await ask('放棄這次的修改？')){editing.destruct();editing=null;onCancel();}}},'取消')),msg));
+  editing=makeEditor(host,initial?.html);
+}
+
+/* ---- 公告頁 ---- */
+function postsView(tab,box){
+  let posts=[];
+  const draw=()=>{
+    if(editing) return;
+    box.replaceChildren();
+    const head=h('div',{class:'head-row'},h('h2',{},tab.name));
+    if(isAdmin()) head.append(h('button',{class:'btn primary',onclick:()=>edit(null)},'＋ 新增公告'));
+    box.append(head);
+    if(!posts.length){box.append(h('div',{class:'card empty'},'目前還沒有公告。'));return;}
+    [...posts].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt||0)-(a.createdAt||0)).forEach(p=>{
+      const c=h('div',{class:'card'},
+        h('h3',{},p.pinned?h('span',{class:'pin'},'置頂'):null,p.title),
+        h('div',{class:'meta'},fmt(p.createdAt)+(p.updatedBy?' · '+p.updatedBy:'')),
+        richBox(p.html,p.bg));
+      if(isAdmin()) c.append(h('div',{class:'actions'},
+        h('button',{class:'btn sm',onclick:()=>edit(p)},'編輯'),
+        h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`刪除公告「${p.title}」？`))await store.remove('posts',p.id);}},'刪除')));
+      box.append(c);
+    });
+  };
+  const edit=p=>itemEditor(box,{title:'公告標題',heading:p?'編輯公告':'新增公告',initial:p,withPin:true,
+    onSave:d=>p?store.update('posts',p.id,d):store.add('posts',d),onCancel:draw});
+  unsub.push(store.watchColl('posts',d=>{posts=d;draw();}));
+}
+
+/* ---- 各項補助商品報名 ---- */
+function itemsView(tab,box){
+  let items=[], signups=[];
+  const draw=()=>{
+    if(editing) return;
+    box.replaceChildren();
+    const head=h('div',{class:'head-row'},h('h2',{},tab.name));
+    if(isAdmin()) head.append(h('button',{class:'btn primary',onclick:()=>edit(null)},'＋ 新增報名項目'));
+    box.append(head);
+    if(!items.length){box.append(h('div',{class:'card empty'},'目前沒有開放報名的項目。'));return;}
+    const today=new Date().toISOString().slice(0,10);
+    [...items].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(it=>{
+      const expired=it.deadline&&it.deadline<today;
+      const isOpen=it.open!==false&&!expired;
+      const mine=signups.filter(s=>s.itemId===it.id).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+      const c=h('div',{class:'card'},
+        h('h3',{},it.title,h('span',{class:'tag'+(isOpen?' open':'')},isOpen?'報名中':'已截止')),
+        h('div',{class:'meta'},it.deadline?`截止日 ${it.deadline}`:'未設截止日'),
+        richBox(it.html,it.bg));
+      if(isOpen){
+        const nm=h('input',{type:'text',placeholder:'遊戲角色名稱',maxlength:40,'aria-label':'遊戲角色名稱'});
+        const nt=h('input',{type:'text',placeholder:'備註（選填，例如數量、職業）',maxlength:200,'aria-label':'備註'});
+        const msg=h('div',{class:'msg'});
+        const btn=h('button',{class:'btn primary',type:'submit'},'我要報名');
+        const f=h('form',{class:'signup-form',onsubmit:async e=>{
+          e.preventDefault(); const n=nm.value.trim(); if(!n){msg.className='msg err';msg.textContent='請填角色名稱';return;}
+          if(mine.some(s=>s.name===n)){msg.className='msg err';msg.textContent='這個角色已經報名過了';return;}
+          btn.disabled=true; flash[it.id]=`${n} 報名成功！`;
+          try{ await store.add('signups',{itemId:it.id,name:n,note:nt.value.trim()}); }
+          catch(err){ delete flash[it.id]; btn.disabled=false; msg.className='msg err'; msg.textContent='報名失敗：'+(err.message||err); return; }
+        }},nm,nt,btn);
+        c.append(f,msg);
+        if(flash[it.id]){msg.className='msg ok';msg.textContent=flash[it.id];delete flash[it.id];}
+      }
+      const list=h('div',{class:'list'});
+      const lh=h('div',{class:'list-head'},h('span',{},`已報名 ${mine.length} 人`));
+      if(isAdmin()&&mine.length) lh.append(h('button',{class:'btn sm',onclick:()=>csv(it,mine)},'下載名單 (CSV)'));
+      list.append(lh);
+      if(mine.length){
+        const tb=h('tbody');
+        mine.forEach((s,i)=>tb.append(h('tr',{},h('td',{},String(i+1)),h('td',{},s.name),h('td',{},s.note||''),h('td',{},fmt(s.createdAt)),
+          isAdmin()?h('td',{},h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${s.name} 的報名？`))await store.remove('signups',s.id);}},'移除')):null)));
+        list.append(h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'#'),h('th',{},'角色名稱'),h('th',{},'備註'),h('th',{},'時間'),isAdmin()?h('th',{}):null)),tb));
+      }
+      c.append(list);
+      if(isAdmin()) c.append(h('div',{class:'actions'},
+        h('button',{class:'btn sm',onclick:()=>edit(it)},'編輯項目'),
+        h('button',{class:'btn sm',onclick:()=>store.update('items',it.id,{open:it.open===false})},it.open===false?'重新開放':'關閉報名'),
+        h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`刪除「${it.title}」？報名資料也會一起刪除。`)){for(const s of mine)await store.remove('signups',s.id);await store.remove('items',it.id);}}},'刪除項目')));
+      box.append(c);
+    });
+  };
+  const flash={};
+  const edit=it=>itemEditor(box,{title:'項目名稱',heading:it?'編輯報名項目':'新增報名項目',initial:it,withDeadline:true,
+    onSave:d=>it?store.update('items',it.id,d):store.add('items',d),onCancel:draw});
+  const csv=(it,rows)=>{
+    const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+    const text='﻿'+[['#','角色名稱','備註','時間'],...rows.map((s,i)=>[i+1,s.name,s.note,fmt(s.createdAt)])].map(r=>r.map(esc).join(',')).join('\r\n');
+    const a=h('a',{href:URL.createObjectURL(new Blob([text],{type:'text/csv'})),download:`${it.title}-報名名單.csv`}); document.body.append(a); a.click(); a.remove();
+  };
+  unsub.push(store.watchColl('items',d=>{items=d;draw();}));
+  unsub.push(store.watchColl('signups',d=>{signups=d;draw();}));
+}
+
+/* ---- 管理員設定（只有最高管理員看得到） ---- */
+function adminsView(box){
+  const draw=()=>{
+    box.replaceChildren();
+    const em=h('input',{type:'email',placeholder:'新管理員的 Email',required:true,'aria-label':'Email'});
+    const msg=h('div',{class:'msg'});
+    const f=h('form',{class:'signup-form',style:'grid-template-columns:1fr auto',onsubmit:async e=>{
+      e.preventDefault(); const v=em.value.trim().toLowerCase();
+      if(v===ownerEmail()||admins.includes(v)){msg.className='msg err';msg.textContent='這個 Email 已經是管理員了';return;}
+      try{await store.addAdmin(v,me.email);msg.className='msg ok';msg.textContent=`已新增 ${v}。請對方打開網站 → 管理員登入 → 「第一次使用？設定密碼」。`;}
+      catch(err){msg.className='msg err';msg.textContent='新增失敗：'+(err.message||err);}
+    }},em,h('button',{class:'btn primary',type:'submit'},'新增管理員'));
+    const tb=h('tbody');
+    tb.append(h('tr',{},h('td',{},ownerEmail()),h('td',{},'最高管理員'),h('td',{})));
+    admins.filter(a=>a!==ownerEmail()).sort().forEach(a=>tb.append(h('tr',{},h('td',{},a),h('td',{},'管理員'),
+      h('td',{},h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${a} 的管理員權限？`))await store.removeAdmin(a);}},'移除')))));
+    box.append(h('div',{class:'head-row'},h('h2',{},'管理員設定')),
+      h('div',{class:'card'},h('p',{class:'meta',style:'margin:0'},'被新增的人用同一個 Email 在網站「管理員登入 → 第一次使用？設定密碼」自己設定密碼，收到驗證信點連結後就能編輯。移除後對方立刻失去編輯權限。'),f,msg,
+        h('table',{class:'sl',style:'margin-top:14px'},h('thead',{},h('tr',{},h('th',{},'Email'),h('th',{},'身分'),h('th',{}))),tb)));
+  };
+  draw();
+  const off=store.watchAdmins(()=>draw()); unsub.push(off);
+}
+
+/* ---------------- 登入 ---------------- */
+let lgMode='login';
+function openLogin(mode){
+  lgMode=mode; const reg=mode==='register';
+  $('#lgTitle').textContent=reg?'第一次使用：設定密碼':'管理員登入';
+  $('#lgSubmit').textContent=reg?'建立並寄驗證信':'登入';
+  $('#lgToReg').textContent=reg?'已經有密碼？回到登入':'第一次使用？設定密碼';
+  $('#lgPw').autocomplete=reg?'new-password':'current-password'; $('#lgPw').minLength=(reg&&!store.demo)?6:0;
+  $('#lgErr').textContent=''; $('#lgErr').className='msg';
+  if(!$('#loginDlg').open) $('#loginDlg').showModal();
+}
+$('#lgToReg').onclick=e=>{e.preventDefault();openLogin(lgMode==='register'?'login':'register');};
+$('#lgForgot').onclick=async e=>{
+  e.preventDefault(); const em=$('#lgEmail').value.trim(); const m=$('#lgErr');
+  if(!em){m.className='msg err';m.textContent='請先在上面填 Email';return;}
+  try{await store.resetPw(em);m.className='msg ok';m.textContent='如果這個 Email 有帳號，重設密碼的信已寄出。';}catch{m.className='msg err';m.textContent='寄送失敗，請確認 Email。';}
+};
+$('#lgCancel').onclick=()=>$('#loginDlg').close();
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault(); const m=$('#lgErr'); m.className='msg err'; m.textContent='';
+  const em=$('#lgEmail').value.trim(), pw=$('#lgPw').value;
+  try{
+    if(lgMode==='register') await store.register(em,pw); else await store.login(em,pw);
+    $('#loginDlg').close(); $('#lgPw').value='';
+  }catch(err){
+    const c=err.code||'';
+    m.textContent= store.demo ? err.message
+      : c.includes('email-already-in-use') ? '這個 Email 已經設定過密碼，請直接登入（忘記的話按「忘記密碼」）。'
+      : c.includes('weak-password') ? '密碼至少 6 個字元。'
+      : c.includes('too-many-requests') ? '嘗試太多次，請稍後再試。'
+      : lgMode==='register' ? '設定失敗：'+(err.message||c) : '登入失敗，請確認 Email 和密碼。';
+  }
+};
+
+window.addEventListener('beforeunload',e=>{if(editing){e.preventDefault();e.returnValue='';}});
+let adminsKey='';
+let adminsOff=null;
+function watchAdmins(){
+  if(adminsOff){try{adminsOff()}catch{} adminsOff=null;} admins=[];
+  if(!me||!me.verified) return;
+  store.probeOwner(me.email);
+  adminsOff=store.watchAdmins(list=>{ admins=list.map(x=>x.id.toLowerCase()); ownerId=(list.find(x=>x.owner)?.id||'').toLowerCase(); const k=String(isAdmin())+isOwner(); if(k!==adminsKey){adminsKey=k; renderWho(); renderTabs(); if(!editing) renderMain();} });
+}
+store.onAuth(u=>{ const changed=JSON.stringify(u)!==JSON.stringify(me); me=u; watchAdmins(); adminsKey=String(isAdmin())+isOwner(); renderTabs(); renderWho(); if(changed||!$('#main').childElementCount){ if(editing){try{editing.destruct()}catch{} editing=null;} renderMain(); } });
+renderTabs();
+})();
+</script>
+</body>
+</html>
