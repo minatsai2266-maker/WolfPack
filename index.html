@@ -191,7 +191,7 @@ const TABS = [
   {id:'news',    name:'公告頁',          kind:'posts'},
   {id:'rules',   name:'標裝限制',        kind:'thread'},
   {id:'roster',  name:'人員名單',        kind:'page'},
-  {id:'enemies', name:'敵人警誡名單',    kind:'page'},
+  {id:'enemies', name:'敵人警誡名單',    kind:'thread'},
   {id:'items',   name:'各項補助商品報名', kind:'items'},
 ];
 const MAX_DOC = 900*1024; // Firestore 單筆上限約 1MB
@@ -532,7 +532,7 @@ function threadView(tab,box){
     const oa=a.order??a.createdAt??0, ob=b.order??b.createdAt??0;
     await store.update('posts',a.id,{order:ob===oa?oa+d:ob}); await store.update('posts',b.id,{order:oa});
   };
-  const edit=p=>itemEditor(box,{title:'項目標題（例如：武器、防具、等級限制）',heading:p?'編輯項目':'新增項目',initial:p,
+  const edit=p=>itemEditor(box,{title:tab.id==='enemies'?'項目標題（例如：玩家名稱、血盟名稱）':'項目標題（例如：武器、防具、等級限制）',heading:p?'編輯項目':'新增項目',initial:p,
     onSave:d=>p?store.update('posts',p.id,d):store.add('posts',{...d,tab:tab.id,order:Date.now()}),onCancel:()=>{if(p)openSet.add(p.id);draw();}});
   unsub.push(store.watchColl('posts',d=>{posts=d.filter(x=>x.tab===tab.id);draw();}));
   unsub.push(store.watchPage(tab.id,d=>{intro=d;draw();}));
