@@ -108,6 +108,13 @@ details.thread>summary .th-title::before{content:"▸";color:var(--accent);trans
 details.thread[open]>summary .th-title::before{transform:rotate(90deg)}
 details.thread>summary:hover{background:var(--surface-2)}
 details.thread>.rich,details.thread>.actions{margin:0 20px 16px}
+.emoji-panel{width:min(340px,calc(100vw - 40px));padding:6px;background:#fff;color:#222}
+.emoji-tabs{display:flex;gap:2px;border-bottom:1px solid #e5e5e5;margin-bottom:6px;flex-wrap:wrap}
+.emoji-tabs button{border:0;background:none;padding:4px 8px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:#555}
+.emoji-tabs button.on{background:#f3ead6;color:#222;font-weight:600}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:220px;overflow-y:auto}
+.emoji-grid button{border:0;background:none;font-size:22px;line-height:1;padding:5px 0;cursor:pointer;border-radius:6px}
+.emoji-grid button:hover{background:#f3ead6}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .jodit-container{color:#222}
 </style>
@@ -293,14 +300,32 @@ function compressImage(file){
   });
 }
 
+const EMOJI={
+  '常用':'😀 😂 🤣 😊 😍 😘 😎 🤔 😅 😭 😡 🥳 😴 🙏 👍 👎 👏 🙌 💪 🤝 ❤️ 💔 🔥 ✨ 🎉 💯 ✅ ❌ ⚠️ ❗ ❓ ⭐ 🌟 💡 📢 📣 🔔 📌 📍',
+  '公會':'⚔️ 🗡️ 🛡️ 🏹 🪓 🔱 🪄 💣 🧨 👑 🏰 🐺 🐉 🦅 🐲 💎 💰 🪙 🎁 🏆 🥇 🥈 🥉 🎯 🧪 📜 🗝️ 🔑 💀 ☠️ 👻 🩸 ⚡ 🌪️ ❄️ 🌙 ☀️ 🚩 🏴',
+  '表情':'😃 😄 😁 😆 🥹 😉 🙂 🙃 😋 😜 🤪 😏 😒 🙄 😬 😮 😱 😤 😠 🤬 😈 👿 🤡 😇 🥺 😢 😰 😓 🤯 😵 🥴 🤐 🤫 🤭 🫡 😶 🫠 🤗 🤩 😌',
+  '警示':'⚠️ 🚨 ⛔ 🚫 🛑 🚧 ❗ ❕ ‼️ ⁉️ ❓ ❔ 📛 🔞 ☢️ ☣️ 💢 ❌ ⭕ ✔️ ☑️ ✅ ❎ 🆘 🔴 🟡 🟢 📢 📣 🔔 🔕 ⏰ ⏳ ⌛ 💥 🔥 ⚡ 💀 ☠️ 🏴‍☠️ 👀',
+  '數字':'0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 #️⃣ *️⃣ ① ② ③ ④ ⑤ ⑥ ⑦ ⑧ ⑨ ⑩ ⑪ ⑫ ⑬ ⑭ ⑮ ⑯ ⑰ ⑱ ⑲ ⑳ ☝️ ✌️ 🤟 🖖 🖐️ 🔢 🅰️ 🅱️ 🆎 🅾️',
+  '手勢':'👋 🤚 ✋ 🖐️ 👌 🤌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✊ 👊 🤛 🤜 🫶 👐 🤲 ✍️ 💅 🫵 🙋 🙅 🙆 🤷',
+  '符號':'➡️ ⬅️ ⬆️ ⬇️ ↗️ 🔺 🔻 🔸 🔹 🔶 🔷 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 ⬛ ⬜ ▶️ ⏰ ⏳ 📅 🗓️ 🆕 🆗 🆙 🆘 ⛔ 🚫 💤 ♻️',
+};
+function emojiPanel(onPick,close){
+  const wrap=h('div',{class:'emoji-panel'}), tabs=h('div',{class:'emoji-tabs'}), grid=h('div',{class:'emoji-grid'});
+  const show=cat=>{ grid.replaceChildren(); tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.c===cat));
+    EMOJI[cat].split(' ').forEach(e=>grid.append(h('button',{type:'button',title:e,onmousedown:ev=>ev.preventDefault(),onclick:()=>{onPick(e);}},e))); };
+  Object.keys(EMOJI).forEach(c=>tabs.append(h('button',{type:'button','data-c':c,onmousedown:ev=>ev.preventDefault(),onclick:()=>show(c)},c)));
+  wrap.append(tabs,grid); show('常用'); return wrap;
+}
 function makeEditor(host,html){
   const ed=Jodit.make(host,{
     language:'zh_tw', height:460, minHeight:300, toolbarAdaptive:false, toolbarSticky:true,
     askBeforePasteHTML:false, askBeforePasteFromWord:false, defaultActionOnPaste:'insert_clear_html',
     buttons:['bold','italic','underline','strikethrough','|','font','fontsize','brush','paragraph','|',
-             'ul','ol','align','indent','outdent','|','table','uploadImg','image','link','hr','|',
+             'ul','ol','align','indent','outdent','|','table','uploadImg','image','emoji','link','hr','|',
              'undo','redo','eraser','fullsize','source'],
-    controls:{ uploadImg:{ name:'uploadImg', icon:'upload', tooltip:'上傳圖片（自動壓縮）', text:'上傳圖片',
+    controls:{ emoji:{ name:'emoji', text:'😀', tooltip:'表情符號',
+      popup(editor,cur,close){ return emojiPanel(ch=>{ editor.s.insertHTML(ch); }, close); } },
+      uploadImg:{ name:'uploadImg', icon:'upload', tooltip:'上傳圖片（自動壓縮）', text:'上傳圖片',
       exec(editor){
         const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
         inp.onchange=async()=>{ for(const f of inp.files){ try{ const src=await compressImage(f); editor.s.insertHTML(`<img src="${src}" style="max-width:100%">`);}catch{say('這張圖片無法讀取');} } };
