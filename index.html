@@ -490,7 +490,13 @@ function threadView(tab,box){
     if(posts.length) btns.append(h('button',{class:'btn',onclick:()=>{allOpen=!allOpen;openSet=allOpen?new Set(posts.map(p=>p.id)):new Set();draw();}},allOpen?'全部收合':'全部展開'));
     if(isAdmin()) btns.append(h('button',{class:'btn primary',onclick:()=>edit(null)},'＋ 新增項目'));
     head.append(btns); box.append(head);
-    if(intro?.html) box.append(h('div',{class:'card'},richBox(intro.html,intro.bg)));
+    if(intro?.html){
+      const c=h('div',{class:'card'},richBox(intro.html,intro.bg));
+      if(isAdmin()) c.append(h('div',{class:'actions'},
+        h('button',{class:'btn sm',onclick:()=>editIntro()},'編輯這段'),
+        h('button',{class:'btn sm danger',onclick:async()=>{if(await ask('刪除最上面這段內容？（下面的項目不受影響）'))await store.savePage(tab.id,{html:'',bg:'',updatedBy:myName()});}},'刪除這段')));
+      box.append(c);
+    }
     if(!posts.length){box.append(h('div',{class:'card empty'},'目前還沒有項目。'));return;}
     const list=ordered();
     list.forEach((p,i)=>{
@@ -505,6 +511,21 @@ function threadView(tab,box){
         h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`刪除「${p.title}」？`))await store.remove('posts',p.id);}},'刪除')));
       box.append(det);
     });
+  };
+  const editIntro=()=>{
+    box.replaceChildren();
+    const host=h('div'), msg=h('div',{class:'msg'});
+    const save=h('button',{class:'btn primary',onclick:async()=>{
+      const html=editing.value;
+      if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
+      save.disabled=true; msg.textContent='儲存中…';
+      try{ await store.savePage(tab.id,{html,bg:intro?.bg||'',updatedBy:myName()}); editing.destruct(); editing=null; draw(); }
+      catch(e){ save.disabled=false; msg.className='msg err'; msg.textContent='儲存失敗：'+(e.message||e); }
+    }},'儲存');
+    box.append(h('div',{class:'head-row'},h('h2',{},'編輯：'+tab.name+'（最上面的說明）')),
+      h('div',{class:'card'},h('div',{class:'editor-wrap'},host),
+        h('div',{class:'actions'},save,h('button',{class:'btn',onclick:async()=>{if(await ask('放棄這次的修改？')){editing.destruct();editing=null;draw();}}},'取消')),msg));
+    editing=makeEditor(host,intro?.html);
   };
   const move=async(list,i,d)=>{
     const a=list[i], b=list[i+d]; if(!b) return;
