@@ -193,6 +193,7 @@ const TABS = [
   {id:'roster',  name:'人員名單',        kind:'page'},
   {id:'enemies', name:'敵人警誡名單',    kind:'thread'},
   {id:'items',   name:'各項補助商品報名', kind:'items'},
+  {id:'links',   name:'連結分享',        kind:'thread'},
 ];
 const MAX_DOC = 900*1024; // Firestore 單筆上限約 1MB
 
@@ -283,7 +284,7 @@ function ask(msg,{okOnly=false}={}){
 }
 const say=msg=>ask(msg,{okOnly:true});
 const fmt=t=>{if(!t)return'';const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
-const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';if(bg)d.style.background=bg;return d;};
+const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';d.querySelectorAll('a[href]').forEach(a=>{a.target='_blank';a.rel='noopener';});if(bg)d.style.background=bg;return d;};
 const bytes=s=>new Blob([s||'']).size;
 
 /* 圖片上傳：自動縮到最寬 1200px、轉 JPEG，避免資料太大 */
@@ -534,7 +535,7 @@ function threadView(tab,box){
     const oa=a.order??a.createdAt??0, ob=b.order??b.createdAt??0;
     await store.update('posts',a.id,{order:ob===oa?oa+d:ob}); await store.update('posts',b.id,{order:oa});
   };
-  const edit=p=>itemEditor(box,{title:tab.id==='enemies'?'項目標題（例如：玩家名稱、血盟名稱）':'項目標題（例如：武器、防具、等級限制）',heading:p?'編輯項目':'新增項目',initial:p,
+  const edit=p=>itemEditor(box,{title:tab.id==='enemies'?'項目標題（例如：玩家名稱、血盟名稱）':tab.id==='links'?'連結標題（例如：曼尼拍賣網址、攻略影片）':'項目標題（例如：武器、防具、等級限制）',heading:p?'編輯項目':'新增項目',initial:p,
     onSave:d=>p?store.update('posts',p.id,d):store.add('posts',{...d,tab:tab.id,order:Date.now()}),onCancel:()=>{if(p)openSet.add(p.id);draw();}});
   unsub.push(store.watchColl('posts',d=>{posts=d.filter(x=>x.tab===tab.id);draw();}));
   unsub.push(store.watchPage(tab.id,d=>{intro=d;draw();}));
