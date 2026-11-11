@@ -288,11 +288,36 @@ const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';d
 const bytes=s=>new Blob([s||'']).size;
 
 /* 圖片上傳：自動縮到最寬 1200px、轉 JPEG，避免資料太大 */
+/* 儲存前自動壓縮內容裡的圖片（貼上、拖曳、任何方式放進來的都算），直到大小放得進資料庫 */
+function shrinkDataUrl(src,max,q){
+  return new Promise(ok=>{
+    const img=new Image();
+    img.onload=()=>{ const s=Math.min(1,max/img.width); const c=document.createElement('canvas');
+      c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+      const out=c.toDataURL('image/jpeg',q); ok(out.length<src.length?out:src); };
+    img.onerror=()=>ok(src); img.src=src;
+  });
+}
+async function shrinkHtml(html){
+  if(bytes(html)<=MAX_DOC*0.6 && !/src="data:image\/(png|bmp|gif|webp)/.test(html)) return html;
+  const steps=[[1600,.85],[1400,.78],[1200,.72],[1000,.65],[800,.6]];
+  let out=html;
+  for(const [max,q] of steps){
+    const t=document.createElement('template'); t.innerHTML=out;
+    const imgs=[...t.content.querySelectorAll('img[src^="data:image"]')].filter(i=>i.getAttribute('src').length>60000);
+    if(!imgs.length) break;
+    for(const i of imgs) i.setAttribute('src',await shrinkDataUrl(i.getAttribute('src'),max,q));
+    out=t.innerHTML;
+    if(bytes(out)<=MAX_DOC) break;
+  }
+  return out;
+}
 function compressImage(file){
   return new Promise((ok,err)=>{
     const img=new Image(), url=URL.createObjectURL(file);
     img.onload=()=>{
-      const max=1200, s=Math.min(1,max/img.width);
+      const max=1600, s=Math.min(1,max/img.width);
       const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
       const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
       URL.revokeObjectURL(url);
@@ -409,7 +434,7 @@ function pageView(tab,box){
     const bg=h('input',{type:'color',value:data?.bg||'#fffdf8'});
     const host=h('div'); const msg=h('div',{class:'msg'});
     const save=h('button',{class:'btn primary',onclick:async()=>{
-      const html=editing.value;
+      const html=await shrinkHtml(editing.value);
       if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
       save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
       try{ await store.savePage(tab.id,{html,bg:bg.value,updatedBy:myName()}); editing.destruct(); editing=null; draw(); }
@@ -435,7 +460,8 @@ function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCan
   const bg=h('input',{type:'color',value:initial?.bg||'#fffdf8'});
   const host=h('div'), msg=h('div',{class:'msg'});
   const save=h('button',{class:'btn primary',onclick:async()=>{
-    const html=editing.value, t=tIn.value.trim();
+    msg.className='msg'; msg.textContent='處理圖片中…';
+    const html=await shrinkHtml(editing.value), t=tIn.value.trim();
     if(!t){msg.className='msg err';msg.textContent='請填標題';return;}
     if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
     const data={title:t,html,bg:bg.value,updatedBy:myName(),updatedAt:Date.now()};
@@ -519,7 +545,7 @@ function threadView(tab,box){
     box.replaceChildren();
     const host=h('div'), msg=h('div',{class:'msg'});
     const save=h('button',{class:'btn primary',onclick:async()=>{
-      const html=editing.value;
+      const html=await shrinkHtml(editing.value);
       if(bytes(html)>MAX_DOC){msg.className='msg err';msg.textContent='內容太大（多半是圖片太多或太大），請刪掉幾張圖再存。';return;}
       save.disabled=true; msg.textContent='儲存中…';
       try{ await store.savePage(tab.id,{html,bg:intro?.bg||'',updatedBy:myName()}); editing.destruct(); editing=null; draw(); }
