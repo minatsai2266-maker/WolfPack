@@ -115,6 +115,9 @@ details.thread>.rich,details.thread>.actions{margin:0 20px 16px}
 .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:220px;overflow-y:auto}
 .emoji-grid button{border:0;background:none;font-size:22px;line-height:1;padding:5px 0;cursor:pointer;border-radius:6px}
 .emoji-grid button:hover{background:#f3ead6}
+.sheet-embed{margin:10px 0}
+.sheet-embed iframe{width:100%;height:min(70vh,640px);border:1px solid #ddd;border-radius:8px;background:#fff}
+.sheet-embed .meta{margin-top:4px}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .jodit-container{color:#222}
 </style>
@@ -284,7 +287,19 @@ function ask(msg,{okOnly=false}={}){
 }
 const say=msg=>ask(msg,{okOnly:true});
 const fmt=t=>{if(!t)return'';const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
-const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';d.querySelectorAll('a[href]').forEach(a=>{a.target='_blank';a.rel='noopener';});if(bg)d.style.background=bg;return d;};
+/* Google 試算表連結：在連結下方直接嵌入表格（試算表要設成「知道連結的人都能檢視」） */
+function embedSheets(root){
+  const seen=new Set();
+  root.querySelectorAll('a[href*="docs.google.com/spreadsheets/d/"]').forEach(a=>{
+    const m=a.href.match(/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/); if(!m||seen.has(m[1])) return; seen.add(m[1]);
+    const gid=(a.href.match(/[#&?]gid=(\d+)/)||[])[1];
+    const src=`https://docs.google.com/spreadsheets/d/${m[1]}/preview${gid?'?gid='+gid:''}`;
+    const box=h('div',{class:'sheet-embed'},h('iframe',{src,loading:'lazy',title:'Google 試算表'}),
+      h('div',{class:'meta'},h('a',{href:a.href,target:'_blank',rel:'noopener'},'在 Google 試算表開啟 ↗')));
+    const block=a.closest('p,div,li,td')||a; (block===root?a:block).after(box);
+  });
+}
+const richBox=(html,bg)=>{const d=h('div',{class:'rich'});d.innerHTML=html||'';d.querySelectorAll('a[href]').forEach(a=>{a.target='_blank';a.rel='noopener';});embedSheets(d);if(bg)d.style.background=bg;return d;};
 const bytes=s=>new Blob([s||'']).size;
 
 /* 圖片上傳：自動縮到最寬 1200px、轉 JPEG，避免資料太大 */
