@@ -665,15 +665,18 @@ function adminsView(box){
       const b=h('button',{class:'btn sm',onclick:async()=>{b.disabled=true;const old=nicks[a]||'', nw=inp.value.trim();try{await store.setNick(a,nw);if(old&&nw&&old!==nw)await store.renameAuthor(old,nw);b.textContent='已儲存';}catch(err){b.textContent='失敗';}setTimeout(()=>{b.disabled=false;b.textContent='儲存';},1500);}},'儲存');
       return h('td',{},h('div',{style:'display:flex;gap:6px'},inp,b));
     };
-    tb.append(h('tr',{},h('td',{},ownerEmail()),nickCell(ownerEmail()),h('td',{},'最高管理員'),h('td',{})));
-    admins.filter(a=>a!==ownerEmail()).sort().forEach(a=>tb.append(h('tr',{},h('td',{},a),nickCell(a),h('td',{},'管理員'),
+    const lastCell=a=>{const td=h('td',{class:'meta',style:'white-space:nowrap'},'…');emailKey(a).then(k=>{td.textContent=logins[k]?fmt(logins[k]):'尚未登入';});return td;};
+    tb.append(h('tr',{},h('td',{},ownerEmail()),nickCell(ownerEmail()),h('td',{},'最高管理員'),lastCell(ownerEmail()),h('td',{})));
+    admins.filter(a=>a!==ownerEmail()).sort().forEach(a=>tb.append(h('tr',{},h('td',{},a),nickCell(a),h('td',{},'管理員'),lastCell(a),
       h('td',{},h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${a} 的管理員權限？`))await store.removeAdmin(a);}},'移除')))));
     box.append(h('div',{class:'head-row'},h('h2',{},'管理員設定')),
       h('div',{class:'card'},h('p',{class:'meta',style:'margin:0'},'被新增的人用同一個 Email 在網站「管理員登入 → 第一次使用？設定密碼」自己設定密碼，收到驗證信點連結後就能編輯（或直接用 Google 帳號登入）。移除後對方立刻失去編輯權限。公告和頁面上只會顯示暱稱，不會顯示 Email。'),f,msg,
-        h('div',{style:'overflow-x:auto;margin-top:14px'},h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'Email'),h('th',{},'顯示暱稱'),h('th',{},'身分'),h('th',{}))),tb))));
+        h('div',{style:'overflow-x:auto;margin-top:14px'},h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'Email'),h('th',{},'顯示暱稱'),h('th',{},'身分'),h('th',{},'最後登入'),h('th',{}))),tb))));
   };
+  let logins={};
   draw();
   const off=store.watchAdmins(()=>draw()); unsub.push(off);
+  unsub.push(store.watchPage('_logins',d=>{logins=d||{};draw();}));
 }
 
 /* ---------------- 登入 ---------------- */
@@ -723,13 +726,19 @@ $('#loginForm').onsubmit=async e=>{
 window.addEventListener('beforeunload',e=>{if(editing){e.preventDefault();e.returnValue='';}});
 let adminsKey='';
 let adminsOff=null;
+/* 最後登入時間：存在 pages/_logins，用 Email 的雜湊當鍵，公開資料裡不會出現 Email */
+const emailKey=async e=>{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('wolfpack:'+e));return 'k'+[...new Uint8Array(b)].slice(0,12).map(x=>x.toString(16).padStart(2,'0')).join('');};
+let loginRecorded=false;
+async function recordLogin(){ if(loginRecorded||!isAdmin()) return; loginRecorded=true;
+  try{ const k=await emailKey(me.email); const cur=(await new Promise(r=>{const off=store.watchPage('_logins',d=>{r(d||{});setTimeout(()=>{try{off()}catch{}});});}));
+    await store.savePage('_logins',{...cur,[k]:Date.now()}); }catch(e){ console.warn('login time',e); } }
 function watchAdmins(){
   if(adminsOff){try{adminsOff()}catch{} adminsOff=null;} admins=[];
   if(!me||!me.verified) return;
   store.probeOwner(me.email);
-  adminsOff=store.watchAdmins(list=>{ admins=list.map(x=>x.id.toLowerCase()); nicks=Object.fromEntries(list.map(x=>[x.id.toLowerCase(),x.nickname||''])); ownerId=(list.find(x=>x.owner)?.id||'').toLowerCase(); renderWho(); const k=String(isAdmin())+isOwner(); if(k!==adminsKey){adminsKey=k; renderTabs(); if(!editing) renderMain();} });
+  adminsOff=store.watchAdmins(list=>{ admins=list.map(x=>x.id.toLowerCase()); nicks=Object.fromEntries(list.map(x=>[x.id.toLowerCase(),x.nickname||''])); ownerId=(list.find(x=>x.owner)?.id||'').toLowerCase(); renderWho(); recordLogin(); const k=String(isAdmin())+isOwner(); if(k!==adminsKey){adminsKey=k; renderTabs(); if(!editing) renderMain();} });
 }
-store.onAuth(u=>{ const changed=JSON.stringify(u)!==JSON.stringify(me); me=u; watchAdmins(); adminsKey=String(isAdmin())+isOwner(); renderTabs(); renderWho(); if(changed||!$('#main').childElementCount){ if(editing){try{editing.destruct()}catch{} editing=null;} renderMain(); } });
+store.onAuth(u=>{ const changed=JSON.stringify(u)!==JSON.stringify(me); if(changed) loginRecorded=false; me=u; watchAdmins(); adminsKey=String(isAdmin())+isOwner(); renderTabs(); renderWho(); if(changed||!$('#main').childElementCount){ if(editing){try{editing.destruct()}catch{} editing=null;} renderMain(); } });
 renderTabs();
 })();
 </script>
