@@ -655,10 +655,11 @@ function itemsView(tab,box){
           else if(dup.length){msg.textContent='這個角色已經報名過了';return;}
           btn.disabled=true; flash[it.id]=`${n} 報名成功！`;
           try{ await store.add('signups',{itemId:it.id,name:n,lineName:l,choices:ch,image:imgData,note:nt.value.trim()}); }
-          catch(err){ delete flash[it.id]; btn.disabled=false; msg.textContent='報名失敗：'+(err.message||err); return; }
+          catch(err){ const pd=String(err.code||err.message||'').includes('permission');
+            flash[it.id]='!'+(pd?'報名失敗：資料庫規則還沒更新，請通知管理員。':'報名失敗：'+(err.message||err)); draw(); return; }
         }},h('div',{class:'two'},ln,nm),optBox,imgRow,h('div',{class:'two'},nt,btn));
         c.append(f,msg);
-        if(flash[it.id]){msg.className='msg ok';msg.textContent=flash[it.id];delete flash[it.id];}
+        if(flash[it.id]){const e=flash[it.id].startsWith('!');msg.className='msg '+(e?'err':'ok');msg.textContent=e?flash[it.id].slice(1):flash[it.id];delete flash[it.id];}
       }
       const filt=filters[it.id]||'';
       const rows=filt?mine.filter(s=>(s.choices||[]).includes(filt)):mine;
