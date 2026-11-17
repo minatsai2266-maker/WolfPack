@@ -33,9 +33,12 @@ service cloud.firestore {
     // 報名：任何人都能報名（不用登入），只有管理員能刪
     match /signups/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(['itemId','name','note','createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['itemId','name','lineName','choices','image','note','createdAt'])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+                    && request.resource.data.get('lineName','') is string && request.resource.data.get('lineName','').size() <= 60
+                    && request.resource.data.get('choices',[]) is list && request.resource.data.get('choices',[]).size() <= 40
+                    && request.resource.data.get('image','') is string && request.resource.data.get('image','').size() <= 400000
                     && request.resource.data.note is string && request.resource.data.note.size() <= 200
                     && request.resource.data.createdAt is number
                     && exists(/databases/$(database)/documents/items/$(request.resource.data.itemId));

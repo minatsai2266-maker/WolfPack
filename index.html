@@ -89,7 +89,9 @@ main{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
 .signup-form input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
 @media (max-width:640px){.signup-form{grid-template-columns:1fr}}
 .list{margin-top:12px;border-top:1px solid var(--line)}
-.list-head{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14px;color:var(--muted)}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;font-size:14px;color:var(--muted)}
+.list-head select{max-width:100%}
+.list-head .actions{min-width:0;max-width:100%}
 table.sl{width:100%;border-collapse:collapse;font-size:14px}
 table.sl th,table.sl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
 table.sl th{color:var(--muted);font-weight:500}
@@ -118,6 +120,19 @@ details.thread>.rich,details.thread>.actions{margin:0 20px 16px}
 .sheet-embed{margin:10px 0}
 .sheet-embed iframe{width:100%;height:min(70vh,640px);border:1px solid #ddd;border-radius:8px;background:#fff}
 .sheet-embed .meta{margin-top:4px}
+.signup-form2{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.signup-form2 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.signup-form2 .two:last-child{grid-template-columns:1fr auto}
+.signup-form2 input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+@media (max-width:640px){.signup-form2 .two,.signup-form2 .two:last-child{grid-template-columns:1fr}}
+.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
+.opt{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;background:var(--surface)}
+.opt:has(input:checked){border-color:var(--accent);background:var(--surface-2)}
+.opt input{margin-top:4px;flex:none}
+.up-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.up-prev{max-height:80px;border-radius:6px;border:1px solid var(--line)}
+.img-dlg{width:min(900px,calc(100vw - 32px))}
+.img-dlg img{max-width:100%;display:block;margin-top:8px}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .jodit-container{color:#222}
 </style>
@@ -473,6 +488,12 @@ function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCan
   const dl=withDeadline?h('input',{type:'date',value:initial?.deadline||''}):null;
   const open=withDeadline?h('input',{type:'checkbox'}):null; if(open) open.checked=initial?initial.open!==false:true;
   const bg=h('input',{type:'color',value:initial?.bg||'#fffdf8'});
+  const optTa=withDeadline?h('textarea',{rows:6,placeholder:'一行一個選項，例如：\n地龍面甲\n水龍面甲\n風精靈王碎片\n（留空＝不用選）',style:'font:inherit'}):null;
+  if(optTa) optTa.value=(initial?.options||[]).join('\n');
+  const multi=withDeadline?h('input',{type:'checkbox'}):null; if(multi) multi.checked=initial?initial.multi!==false:true;
+  const imgMode=withDeadline?h('select',{style:'border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px'},
+    h('option',{value:'none'},'不需要'),h('option',{value:'optional'},'選填'),h('option',{value:'required'},'必填')):null;
+  if(imgMode) imgMode.value=initial?.imageMode||'none';
   const host=h('div'), msg=h('div',{class:'msg'});
   const save=h('button',{class:'btn primary',onclick:async()=>{
     msg.className='msg'; msg.textContent='處理圖片中…';
@@ -482,6 +503,7 @@ function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCan
     const data={title:t,html,bg:bg.value,updatedBy:myName(),updatedAt:Date.now()};
     if(pin) data.pinned=pin.checked;
     if(dl){data.deadline=dl.value;data.open=open.checked;}
+    if(optTa){data.options=[...new Set(optTa.value.split('\n').map(x=>x.trim()).filter(Boolean))].slice(0,40);data.multi=multi.checked;data.imageMode=imgMode.value;}
     save.disabled=true; msg.className='msg'; msg.textContent='儲存中…';
     try{ await onSave(data); editing.destruct(); editing=null; onCancel(); }
     catch(e){ save.disabled=false; msg.className='msg err'; msg.textContent='儲存失敗：'+(e.message||e); }
@@ -490,8 +512,12 @@ function itemEditor(box,{title,heading,initial,withPin,withDeadline,onSave,onCan
   if(pin) opts.append(h('label',{},pin,'置頂'));
   if(dl) opts.append(h('label',{},'截止日 ',dl),h('label',{},open,'開放報名'));
   opts.append(h('label',{},'內容底色 ',bg));
+  const signupOpts=optTa?h('div',{class:'field',style:'background:var(--surface-2);border-radius:8px;padding:12px;margin-top:4px'},
+    h('label',{style:'font-weight:600;color:var(--text)'},'報名表設定'),
+    h('label',{},'報名選項（成員報名時勾選，例如面甲、碎片）'),optTa,
+    h('div',{class:'inline',style:'margin:6px 0 0'},h('label',{},multi,'可以複選'),h('label',{},'上傳圖片：',imgMode))):null;
   box.append(h('div',{class:'head-row'},h('h2',{},heading)),
-    h('div',{class:'card'},h('div',{class:'field'},h('label',{},title),tIn),opts,h('div',{class:'editor-wrap'},host),
+    h('div',{class:'card'},h('div',{class:'field'},h('label',{},title),tIn),opts,h('div',{class:'editor-wrap'},host),signupOpts,
       h('div',{class:'actions'},save,h('button',{class:'btn',onclick:async()=>{if(await ask('放棄這次的修改？')){editing.destruct();editing=null;onCancel();}}},'取消')),msg));
   editing=makeEditor(host,initial?.html);
 }
@@ -601,30 +627,59 @@ function itemsView(tab,box){
         h('h3',{},it.title,h('span',{class:'tag'+(isOpen?' open':'')},isOpen?'報名中':'已截止')),
         h('div',{class:'meta'},it.deadline?`截止日 ${it.deadline}`:'未設截止日'),
         richBox(it.html,it.bg));
+      const opts=it.options||[];
       if(isOpen){
+        const ln=h('input',{type:'text',placeholder:'LINE 名字（要跟機體表上填的一樣）',maxlength:60,'aria-label':'LINE 名字'});
         const nm=h('input',{type:'text',placeholder:'遊戲角色名稱',maxlength:40,'aria-label':'遊戲角色名稱'});
-        const nt=h('input',{type:'text',placeholder:'備註（選填，例如數量、職業）',maxlength:200,'aria-label':'備註'});
+        const nt=h('input',{type:'text',placeholder:'備註（選填）',maxlength:200,'aria-label':'備註'});
         const msg=h('div',{class:'msg'});
         const btn=h('button',{class:'btn primary',type:'submit'},'我要報名');
-        const f=h('form',{class:'signup-form',onsubmit:async e=>{
-          e.preventDefault(); const n=nm.value.trim(); if(!n){msg.className='msg err';msg.textContent='請填角色名稱';return;}
-          if(mine.some(s=>s.name===n)){msg.className='msg err';msg.textContent='這個角色已經報名過了';return;}
+        const checks=opts.map(o=>h('input',{type:it.multi===false?'radio':'checkbox',name:'opt-'+it.id,value:o}));
+        const optBox=opts.length?h('div',{class:'opt-grid'},opts.map((o,k)=>h('label',{class:'opt'},checks[k],h('span',{},o)))):null;
+        let imgData='';
+        const prev=h('img',{class:'up-prev',alt:'',hidden:true});
+        const file=h('input',{type:'file',accept:'image/*','aria-label':'上傳圖片',onchange:async()=>{
+          imgData=''; prev.hidden=true; const f0=file.files[0]; if(!f0) return;
+          try{ imgData=await shrinkDataUrl(await compressImage(f0),1000,.72); prev.src=imgData; prev.hidden=false; }catch{ msg.className='msg err'; msg.textContent='這張圖片無法讀取'; }
+        }});
+        const imgRow=(it.imageMode&&it.imageMode!=='none')?h('div',{class:'up-row'},h('span',{class:'meta'},it.imageMode==='required'?'上傳圖片（必填）':'上傳圖片（選填）'),file,prev):null;
+        const f=h('form',{class:'signup-form2',onsubmit:async e=>{
+          e.preventDefault(); msg.className='msg err';
+          const l=ln.value.trim(), n=nm.value.trim(), ch=checks.filter(x=>x.checked).map(x=>x.value);
+          if(!l){msg.textContent='請填 LINE 名字';return;}
+          if(!n){msg.textContent='請填角色名稱';return;}
+          if(opts.length&&!ch.length){msg.textContent='請至少勾選一個選項';return;}
+          if(it.imageMode==='required'&&!imgData){msg.textContent='請上傳圖片';return;}
+          const dup=mine.filter(s=>s.name===n);
+          if(opts.length){ const again=ch.filter(o=>dup.some(s=>(s.choices||[]).includes(o))); if(again.length){msg.textContent=`這個角色已經排過：${again.join('、')}`;return;} }
+          else if(dup.length){msg.textContent='這個角色已經報名過了';return;}
           btn.disabled=true; flash[it.id]=`${n} 報名成功！`;
-          try{ await store.add('signups',{itemId:it.id,name:n,note:nt.value.trim()}); }
-          catch(err){ delete flash[it.id]; btn.disabled=false; msg.className='msg err'; msg.textContent='報名失敗：'+(err.message||err); return; }
-        }},nm,nt,btn);
+          try{ await store.add('signups',{itemId:it.id,name:n,lineName:l,choices:ch,image:imgData,note:nt.value.trim()}); }
+          catch(err){ delete flash[it.id]; btn.disabled=false; msg.textContent='報名失敗：'+(err.message||err); return; }
+        }},h('div',{class:'two'},ln,nm),optBox,imgRow,h('div',{class:'two'},nt,btn));
         c.append(f,msg);
         if(flash[it.id]){msg.className='msg ok';msg.textContent=flash[it.id];delete flash[it.id];}
       }
+      const filt=filters[it.id]||'';
+      const rows=filt?mine.filter(s=>(s.choices||[]).includes(filt)):mine;
       const list=h('div',{class:'list'});
-      const lh=h('div',{class:'list-head'},h('span',{},`已報名 ${mine.length} 人`));
-      if(isAdmin()&&mine.length) lh.append(h('button',{class:'btn sm',onclick:()=>csv(it,mine)},'下載名單 (CSV)'));
-      list.append(lh);
-      if(mine.length){
+      const lh=h('div',{class:'list-head'},h('span',{},filt?`「${filt}」排隊 ${rows.length} 人`:`已報名 ${mine.length} 人`));
+      const tools=h('div',{class:'actions',style:'margin:0'});
+      if(opts.length&&mine.length){
+        const sel=h('select',{style:'border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;font-size:13px','aria-label':'依選項查看',onchange:()=>{filters[it.id]=sel.value;draw();}},
+          h('option',{value:''},'全部選項'),opts.map(o=>h('option',{value:o},`${o}（${mine.filter(s=>(s.choices||[]).includes(o)).length}）`)));
+        sel.value=filt; tools.append(sel);
+      }
+      if(isAdmin()&&mine.length) tools.append(h('button',{class:'btn sm',onclick:()=>csv(it,rows,filt)},'下載名單 (CSV)'));
+      lh.append(tools); list.append(lh);
+      if(rows.length){
         const tb=h('tbody');
-        mine.forEach((s,i)=>tb.append(h('tr',{},h('td',{},String(i+1)),h('td',{},s.name),h('td',{},s.note||''),h('td',{},fmt(s.createdAt)),
-          isAdmin()?h('td',{},h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${s.name} 的報名？`))await store.remove('signups',s.id);}},'移除')):null)));
-        list.append(h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'#'),h('th',{},'角色名稱'),h('th',{},'備註'),h('th',{},'時間'),isAdmin()?h('th',{}):null)),tb));
+        rows.forEach((s,i)=>tb.append(h('tr',{},h('td',{},String(i+1)),h('td',{},s.name),h('td',{},s.lineName||''),
+          opts.length?h('td',{},(s.choices||[]).join('、')):null,h('td',{},s.note||''),h('td',{style:'white-space:nowrap'},fmt(s.createdAt)),
+          isAdmin()?h('td',{style:'white-space:nowrap'},s.image?h('button',{class:'btn sm',onclick:()=>showImg(s.image,s.name)},'看圖'):null,' ',
+            h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`移除 ${s.name} 的報名？`))await store.remove('signups',s.id);}},'移除')):null)));
+        list.append(h('div',{style:'overflow-x:auto'},h('table',{class:'sl'},h('thead',{},h('tr',{},h('th',{},'#'),h('th',{},'角色名稱'),h('th',{},'LINE 名字'),
+          opts.length?h('th',{},'選項'):null,h('th',{},'備註'),h('th',{},'時間'),isAdmin()?h('th',{}):null)),tb)));
       }
       c.append(list);
       if(isAdmin()) c.append(h('div',{class:'actions'},
@@ -634,13 +689,14 @@ function itemsView(tab,box){
       box.append(c);
     });
   };
-  const flash={};
+  const flash={}, filters={};
+  const showImg=(src,name)=>{const d=h('dialog',{class:'img-dlg'},h('div',{class:'head-row'},h('strong',{},name),h('button',{class:'btn sm',onclick:()=>{d.close();d.remove();}},'關閉')),h('img',{src,alt:name}));document.body.append(d);d.showModal();};
   const edit=it=>itemEditor(box,{title:'項目名稱',heading:it?'編輯報名項目':'新增報名項目',initial:it,withDeadline:true,
     onSave:d=>it?store.update('items',it.id,d):store.add('items',d),onCancel:draw});
-  const csv=(it,rows)=>{
+  const csv=(it,rows,filt)=>{
     const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
-    const text='﻿'+[['#','角色名稱','備註','時間'],...rows.map((s,i)=>[i+1,s.name,s.note,fmt(s.createdAt)])].map(r=>r.map(esc).join(',')).join('\r\n');
-    const a=h('a',{href:URL.createObjectURL(new Blob([text],{type:'text/csv'})),download:`${it.title}-報名名單.csv`}); document.body.append(a); a.click(); a.remove();
+    const text='﻿'+[['#','角色名稱','LINE 名字','選項','備註','有圖片','時間'],...rows.map((s,i)=>[i+1,s.name,s.lineName,(s.choices||[]).join('、'),s.note,s.image?'有':'',fmt(s.createdAt)])].map(r=>r.map(esc).join(',')).join('\r\n');
+    const a=h('a',{href:URL.createObjectURL(new Blob([text],{type:'text/csv'})),download:`${it.title}${filt?'-'+filt:''}-報名名單.csv`}); document.body.append(a); a.click(); a.remove();
   };
   unsub.push(store.watchColl('items',d=>{items=d;draw();}));
   unsub.push(store.watchColl('signups',d=>{signups=d;draw();}));
