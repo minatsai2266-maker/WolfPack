@@ -110,6 +110,8 @@ details.thread>summary .th-title::before{content:"▸";color:var(--accent);trans
 details.thread[open]>summary .th-title::before{transform:rotate(90deg)}
 details.thread>summary:hover{background:var(--surface-2)}
 details.thread>.rich,details.thread>.actions{margin:0 20px 16px}
+details.thread>.thread-body{padding:0 20px 18px}
+details.thread .th-title .tag{font-size:12px;font-weight:500}
 .emoji-panel{width:min(340px,calc(100vw - 40px));padding:6px;background:#fff;color:#222}
 .emoji-tabs{display:flex;gap:2px;border-bottom:1px solid #e5e5e5;margin-bottom:6px;flex-wrap:wrap}
 .emoji-tabs button{border:0;background:none;padding:4px 8px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:#555}
@@ -609,6 +611,7 @@ function threadView(tab,box){
 }
 
 /* ---- 各項補助商品報名 ---- */
+const openItems=new Set();
 function itemsView(tab,box){
   let items=[], signups=[];
   const draw=()=>{
@@ -623,10 +626,11 @@ function itemsView(tab,box){
       const expired=it.deadline&&it.deadline<today;
       const isOpen=it.open!==false&&!expired;
       const mine=signups.filter(s=>s.itemId===it.id).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-      const c=h('div',{class:'card'},
-        h('h3',{},it.title,h('span',{class:'tag'+(isOpen?' open':'')},isOpen?'報名中':'已截止')),
-        h('div',{class:'meta'},it.deadline?`截止日 ${it.deadline}`:'未設截止日'),
-        richBox(it.html,it.bg));
+      const wrap=h('details',{class:'card thread',open:openItems.has(it.id)});
+      wrap.addEventListener('toggle',()=>{wrap.open?openItems.add(it.id):openItems.delete(it.id);});
+      wrap.append(h('summary',{},h('span',{class:'th-title'},it.title,h('span',{class:'tag'+(isOpen?' open':'')},isOpen?'報名中':'已截止')),
+        h('span',{class:'meta'},(it.deadline?`截止日 ${it.deadline}`:'未設截止日')+(isAdmin()?` · 已報名 ${mine.length} 人`:''))));
+      const c=h('div',{class:'thread-body'},richBox(it.html,it.bg)); wrap.append(c);
       const opts=it.options||[];
       if(isOpen){
         const ln=h('input',{type:'text',placeholder:'LINE 名字（要跟機體表上填的一樣）',maxlength:60,'aria-label':'LINE 名字'});
@@ -653,7 +657,7 @@ function itemsView(tab,box){
           const dup=mine.filter(s=>s.name===n);
           if(opts.length){ const again=ch.filter(o=>dup.some(s=>(s.choices||[]).includes(o))); if(again.length){msg.textContent=`這個角色已經排過：${again.join('、')}`;return;} }
           else if(dup.length){msg.textContent='這個角色已經報名過了';return;}
-          btn.disabled=true; flash[it.id]=`${n} 報名成功！`;
+          btn.disabled=true; flash[it.id]=`${n} 報名成功！`; openItems.add(it.id);
           try{ await store.add('signups',{itemId:it.id,name:n,lineName:l,choices:ch,image:imgData,note:nt.value.trim()}); if(flash[it.id]) draw(); }
           catch(err){ const pd=String(err.code||err.message||'').includes('permission');
             flash[it.id]='!'+(pd?'報名失敗：資料庫規則還沒更新，請通知管理員。':'報名失敗：'+(err.message||err)); draw(); return; }
@@ -661,7 +665,7 @@ function itemsView(tab,box){
         c.append(f,msg);
         if(flash[it.id]){const e=flash[it.id].startsWith('!');msg.className='msg '+(e?'err':'ok');msg.textContent=e?flash[it.id].slice(1):flash[it.id];delete flash[it.id];}
       }
-      if(!isAdmin()){ c.append(h('div',{class:'list'},h('div',{class:'list-head'},h('span',{},'🔒 報名名單只有管理員看得到')))); box.append(c); return; }
+      if(!isAdmin()){ c.append(h('div',{class:'list'},h('div',{class:'list-head'},h('span',{},'🔒 報名名單只有管理員看得到')))); box.append(wrap); return; }
       const filt=filters[it.id]||'';
       const rows=filt?mine.filter(s=>(s.choices||[]).includes(filt)):mine;
       const list=h('div',{class:'list'});
@@ -688,7 +692,7 @@ function itemsView(tab,box){
         h('button',{class:'btn sm',onclick:()=>edit(it)},'編輯項目'),
         h('button',{class:'btn sm',onclick:()=>store.update('items',it.id,{open:it.open===false})},it.open===false?'重新開放':'關閉報名'),
         h('button',{class:'btn sm danger',onclick:async()=>{if(await ask(`刪除「${it.title}」？報名資料也會一起刪除。`)){for(const s of mine)await store.remove('signups',s.id);await store.remove('items',it.id);}}},'刪除項目')));
-      box.append(c);
+      box.append(wrap);
     });
   };
   const flash={}, filters={};
