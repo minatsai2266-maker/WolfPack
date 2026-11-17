@@ -654,13 +654,14 @@ function itemsView(tab,box){
           if(opts.length){ const again=ch.filter(o=>dup.some(s=>(s.choices||[]).includes(o))); if(again.length){msg.textContent=`這個角色已經排過：${again.join('、')}`;return;} }
           else if(dup.length){msg.textContent='這個角色已經報名過了';return;}
           btn.disabled=true; flash[it.id]=`${n} 報名成功！`;
-          try{ await store.add('signups',{itemId:it.id,name:n,lineName:l,choices:ch,image:imgData,note:nt.value.trim()}); }
+          try{ await store.add('signups',{itemId:it.id,name:n,lineName:l,choices:ch,image:imgData,note:nt.value.trim()}); if(flash[it.id]) draw(); }
           catch(err){ const pd=String(err.code||err.message||'').includes('permission');
             flash[it.id]='!'+(pd?'報名失敗：資料庫規則還沒更新，請通知管理員。':'報名失敗：'+(err.message||err)); draw(); return; }
         }},h('div',{class:'two'},ln,nm),optBox,imgRow,h('div',{class:'two'},nt,btn));
         c.append(f,msg);
         if(flash[it.id]){const e=flash[it.id].startsWith('!');msg.className='msg '+(e?'err':'ok');msg.textContent=e?flash[it.id].slice(1):flash[it.id];delete flash[it.id];}
       }
+      if(!isAdmin()){ c.append(h('div',{class:'list'},h('div',{class:'list-head'},h('span',{},'🔒 報名名單只有管理員看得到')))); box.append(c); return; }
       const filt=filters[it.id]||'';
       const rows=filt?mine.filter(s=>(s.choices||[]).includes(filt)):mine;
       const list=h('div',{class:'list'});
@@ -700,7 +701,7 @@ function itemsView(tab,box){
     const a=h('a',{href:URL.createObjectURL(new Blob([text],{type:'text/csv'})),download:`${it.title}${filt?'-'+filt:''}-報名名單.csv`}); document.body.append(a); a.click(); a.remove();
   };
   unsub.push(store.watchColl('items',d=>{items=d;draw();}));
-  unsub.push(store.watchColl('signups',d=>{signups=d;draw();}));
+  if(isAdmin()) unsub.push(store.watchColl('signups',d=>{signups=d;draw();}));
 }
 
 /* ---- 管理員設定（只有最高管理員看得到） ---- */

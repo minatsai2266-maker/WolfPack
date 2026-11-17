@@ -30,9 +30,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 報名：任何人都能報名（不用登入），只有管理員能刪
+    // 報名：任何人都能報名（不用登入），只有管理員能看、能刪
     match /signups/{id} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow create: if request.resource.data.keys().hasOnly(['itemId','name','lineName','choices','image','note','createdAt'])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
